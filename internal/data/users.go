@@ -3,7 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -18,7 +18,7 @@ type User struct {
 
 type UserModel struct {
 	DB  *sql.DB
-	log *log.Logger
+	log *slog.Logger
 }
 
 func (userModel UserModel) Insert(user *User) error {
