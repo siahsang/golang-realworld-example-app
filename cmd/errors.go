@@ -15,9 +15,9 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message interface{}) {
-	env := map[string]any{"error": message}
+	errorMsg := map[string]any{"error": message}
 
-	err := app.writeJSON(w, status, env, nil)
+	err := app.writeJSON(w, status, errorMsg, nil)
 	if err != nil {
 		logError(app, r, err)
 		w.WriteHeader(http.StatusInternalServerError)
