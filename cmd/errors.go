@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, message interface{}) {
+	app.errorResponse(w, r, http.StatusBadRequest, message)
+}
+
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
 	message := "The requested resource could not be found."
 	app.errorResponse(w, r, http.StatusNotFound, message)

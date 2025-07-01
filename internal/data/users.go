@@ -14,6 +14,7 @@ type User struct {
 	Username string `json:"username"`
 	Bio      string `json:"bio"`
 	ImageURL string `json:"imageURL"`
+	password string `json:"-"`
 }
 
 type UserModel struct {
@@ -34,4 +35,19 @@ func (userModel UserModel) Insert(user *User) error {
 	err := userModel.DB.QueryRowContext(ctx, query, args).Scan(&user.ID)
 
 	return err
+}
+
+func (user User) SetPassword(plainPassword string) error {
+	if len(password) < 8 {
+		return ErrPasswordTooShort
+	}
+
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	userModel.password = hashedPassword
+	return nil
+
 }
