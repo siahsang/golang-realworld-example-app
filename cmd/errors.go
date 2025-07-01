@@ -13,13 +13,18 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message interface{}) {
 	env := map[string]any{"error": message}
 
-	// Write the response using the writeJSON() helper. If this happens to return an error
-	// then log it, and fall back to sending the client an empty response with a 500 Internal
-	// Server Error status code.
 	err := app.writeJSON(w, status, env, nil)
 	if err != nil {
+		logError(app, r, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+}
+
+func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	logError(app, r, err)
+
+	message := "The server encountered a problem and could not process your request."
+	app.errorResponse(w, r, http.StatusInternalServerError, message)
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
@@ -47,4 +52,11 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data map[st
 
 	return nil
 
+}
+
+func logError(app *application, r *http.Request, err error) {
+	app.logger.Error("Error: "+err.Error(), map[string]string{
+		"request_method": r.Method,
+		"request_url":    r.URL.String(),
+	})
 }

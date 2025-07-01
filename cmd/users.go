@@ -12,7 +12,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		ImageURL string `json:"imageURL"`
 	}
 
-	// Placeholder for user registration logic
+	if err := app.readJSON(w, r, &input); err != nil {
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+	}
+
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("User registered successfully"))
 }
