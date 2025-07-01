@@ -32,7 +32,6 @@ func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Reque
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
-	// Use the json.MarshalIndent() function so that whitespace is added to the encoded JSON.
 	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
@@ -55,7 +54,6 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data map[st
 	}
 
 	return nil
-
 }
 
 func logError(app *application, r *http.Request, err error) {
