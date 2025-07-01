@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/siahsang/blog/internal/data"
+	"github.com/siahsang/blog/internal/validator"
 	"net/http"
 )
 
@@ -22,6 +23,8 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		Email:    input.Email,
 		Username: input.Username,
 	}
+
+	v := validator.New()
 
 	err := user.SetPassword(input.Password)
 

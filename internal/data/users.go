@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
 )
@@ -37,17 +38,15 @@ func (userModel UserModel) Insert(user *User) error {
 	return err
 }
 
-func (user User) SetPassword(plainPassword string) error {
-	if len(password) < 8 {
-		return ErrPasswordTooShort
-	}
+func (user User) SetPassword(plainTextPassword string) error {
+	password, err := bcrypt.GenerateFromPassword([]byte(plainTextPassword), 12)
 
-	hashedPassword, err := hashPassword(password)
 	if err != nil {
 		return err
 	}
 
-	userModel.password = hashedPassword
+	user.password = password
+
 	return nil
 
 }
