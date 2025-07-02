@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"github.com/siahsang/blog/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
@@ -15,7 +16,7 @@ type User struct {
 	Username string `json:"username"`
 	Bio      string `json:"bio"`
 	ImageURL string `json:"imageURL"`
-	password string `json:"-"`
+	password []byte `json:"-"`
 }
 
 type UserModel struct {
@@ -38,15 +39,17 @@ func (userModel UserModel) Insert(user *User) error {
 	return err
 }
 
+func (user User) ValidateUser(v *validator.Validator) error {
+
+}
+
 func (user User) SetPassword(plainTextPassword string) error {
-	password, err := bcrypt.GenerateFromPassword([]byte(plainTextPassword), 12)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plainTextPassword), 12)
 
 	if err != nil {
 		return err
 	}
 
-	user.password = password
-
+	user.password = hashedPassword
 	return nil
-
 }
