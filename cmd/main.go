@@ -20,13 +20,13 @@ func main() {
 	db, err := openDBConnection()
 
 	if err != nil {
-		logger.Error("Error opening database connection: %v", err)
+		logger.Error("Errors opening database connection: %v", err)
 		os.Exit(1)
 	}
 
 	defer func() {
 		if err := db.Close(); err != nil {
-			logger.Error("Error closing database connection: %v", err)
+			logger.Error("Errors closing database connection: %v", err)
 			os.Exit(1)
 		}
 	}()

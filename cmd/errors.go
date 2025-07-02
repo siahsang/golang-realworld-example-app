@@ -57,7 +57,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data map[st
 }
 
 func logError(app *application, r *http.Request, err error) {
-	app.logger.Error("Error: "+err.Error(), map[string]string{
+	app.logger.Error("Errors: "+err.Error(), map[string]string{
 		"request_method": r.Method,
 		"request_url":    r.URL.String(),
 	})

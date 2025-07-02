@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+type envelope map[string]any
+
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
@@ -20,14 +22,27 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	user := &data.User{
-		Email:    input.Email,
-		Username: input.Username,
+		Email:             input.Email,
+		Username:          input.Username,
+		PlaintextPassword: input.Password,
+	}
+
+	err := user.SetPassword(input.Password)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 
 	v := validator.New()
+	user.ValidateUser(v)
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, v.Errors)
+		return
+	}
 
-	err := user.SetPassword(input.Password)
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("User registered successfully"))
 }
