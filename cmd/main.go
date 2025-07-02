@@ -3,15 +3,18 @@ package main
 import (
 	"context"
 	"database/sql"
+	_ "github.com/lib/pq"
 	"github.com/siahsang/blog/internal/data"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 )
 
 type application struct {
 	models data.Models
 	logger *slog.Logger
+	wg     sync.WaitGroup
 }
 
 func main() {
@@ -35,8 +38,14 @@ func main() {
 
 	app := application{
 		models: data.NewModels(db, logger),
+		logger: logger,
+		wg:     sync.WaitGroup{},
 	}
 
+	if err := app.serve(); err != nil {
+		logger.Error("Error starting server: %v", err)
+		os.Exit(1)
+	}
 }
 
 func configLogger() *slog.Logger {
