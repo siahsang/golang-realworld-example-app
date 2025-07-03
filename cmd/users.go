@@ -9,26 +9,30 @@ import (
 type envelope map[string]any
 
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
-
-	var input struct {
+	type registerUserPayload struct {
 		Email    string `json:"email"`
-		Password string `json:"token"`
 		Username string `json:"username"`
+		Password string `json:"password"`
 	}
 
-	if err := app.readJSON(w, r, &input); err != nil {
+	type RegisterUserRequest struct {
+		registerUserPayload `json:"user"`
+	}
+
+	var registerUserRequest RegisterUserRequest
+
+	if err := app.readJSON(w, r, &registerUserRequest); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	user := &data.User{
-		Email:             input.Email,
-		Username:          input.Username,
-		PlaintextPassword: input.Password,
+		Email:             registerUserRequest.Email,
+		Username:          registerUserRequest.Username,
+		PlaintextPassword: registerUserRequest.Password,
 	}
 
-	err := user.SetPassword(input.Password)
-	if err != nil {
+	if err := user.SetPassword(registerUserRequest.Password); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -40,8 +44,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil)
-	if err != nil {
+	if err := app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 

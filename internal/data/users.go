@@ -14,8 +14,6 @@ type User struct {
 	Email             string `json:"email"`
 	Token             string `json:"token"`
 	Username          string `json:"username"`
-	Bio               string `json:"bio"`
-	ImageURL          string `json:"imageURL"`
 	password          []byte `json:"-"`
 	PlaintextPassword string `json:"-"`
 }
@@ -40,7 +38,7 @@ func (userModel UserModel) Insert(user *User) error {
 	return err
 }
 
-func (user User) ValidateUser(v *validator.Validator) {
+func (user *User) ValidateUser(v *validator.Validator) {
 	// check email
 	v.CheckNotBlank(user.Email, "email", "must be provided")
 	v.CheckEmail(user.Email, "must be a valid email address")
@@ -50,15 +48,15 @@ func (user User) ValidateUser(v *validator.Validator) {
 	v.Check(len(user.Username) >= 5, "username", "must be at least 5 characters long")
 
 	// check PlaintextPassword
-	v.CheckNotBlank(user.PlaintextPassword, "password", "must be provided")
-	v.Check(len(user.PlaintextPassword) >= 8, "password", "must be at least 8 characters long")
+	v.CheckNotBlank(user.PlaintextPassword, "Plaintext Password", "must be provided")
+	v.Check(len(user.PlaintextPassword) >= 8, "Plaintext Password", "must be at least 8 characters long")
 
 	// check password
 	v.CheckNotBlank(string(user.password), "password", "must be provided")
 
 }
 
-func (user User) SetPassword(plainTextPassword string) error {
+func (user *User) SetPassword(plainTextPassword string) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plainTextPassword), 12)
 
 	if err != nil {

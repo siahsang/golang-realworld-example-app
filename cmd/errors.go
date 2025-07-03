@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
+	"reflect"
 )
 
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, message interface{}) {
@@ -14,8 +16,25 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	app.errorResponse(w, r, http.StatusNotFound, message)
 }
 
-func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message interface{}) {
+func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
 	errorMsg := map[string]any{"error": message}
+	var attrs []slog.Attr
+	attrs = append(attrs, slog.String("address", r.URL.String()))
+
+	if rv := reflect.ValueOf(message); rv.Kind() == reflect.Map {
+		for _, key := range rv.MapKeys() {
+			keyStr, ok := key.Interface().(string)
+			if !ok {
+				continue
+			}
+			v := rv.MapIndex(key).Interface()
+			attrs = append(attrs, slog.Any(keyStr, v))
+		}
+	} else {
+		attrs = append(attrs, slog.Any("message", message))
+	}
+
+	app.logger.LogAttrs(r.Context(), slog.LevelError, "Error in handling request", attrs...)
 
 	err := app.writeJSON(w, status, errorMsg, nil)
 	if err != nil {
@@ -45,8 +64,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data map[st
 		w.Header()[key] = value
 	}
 
-	// Add the "Content-Type: application/json" header, then write the status code and JSON response.
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	if _, err := w.Write(js); err != nil {
 		app.logger.Error(err.Error())
