@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "github.com/lib/pq"
+	"github.com/lmittmann/tint"
 	"github.com/siahsang/blog/internal/data"
 	"log/slog"
 	"os"
@@ -49,7 +50,7 @@ func main() {
 }
 
 func configLogger() *slog.Logger {
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{})
+	handler := tint.NewHandler(os.Stdout, &tint.Options{})
 	logger := slog.New(handler)
 	return logger
 }
