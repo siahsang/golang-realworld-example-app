@@ -3,16 +3,22 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/siahsang/blog/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"time"
 )
 
+var (
+	ErrDuplicateEmail    = errors.New("duplicate email")
+	ErrDuplicateUsername = errors.New("duplicate username")
+)
+
 type User struct {
 	ID                int64  `json:"id"`
 	Email             string `json:"email"`
-	Token             string `json:"token"`
+	Token             string `json:"token,omitempty"`
 	Username          string `json:"username"`
 	password          []byte `json:"-"`
 	PlaintextPassword string `json:"-"`
@@ -30,12 +36,23 @@ func (userModel UserModel) Insert(user *User) error {
 		RETURNING id
 `
 	args := []interface{}{user.Username, user.Email, user.password}
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancelFunc()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
 	err := userModel.DB.QueryRowContext(ctx, query, args).Scan(&user.ID)
 
-	return err
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+			return ErrDuplicateEmail
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"`:
+			return ErrDuplicateUsername
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (user *User) ValidateUser(v *validator.Validator) {

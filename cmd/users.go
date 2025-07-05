@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/siahsang/blog/internal/data"
 	"github.com/siahsang/blog/internal/validator"
 	"net/http"
@@ -42,6 +43,23 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	if !v.IsValid() {
 		app.badRequestResponse(w, r, v.Errors)
 		return
+	}
+
+	err := app.models.Users.Insert(user)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrDuplicateUsername):
+			v.AddError("email", "Email address is already in use")
+			app.badRequestResponse(w, r, v.Errors)
+			return
+		case errors.Is(err, data.ErrDuplicateEmail):
+			v.AddError("username", "Username is already in use")
+			app.badRequestResponse(w, r, v.Errors)
+			return
+		default:
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 	}
 
 	if err := app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil); err != nil {
