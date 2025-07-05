@@ -19,7 +19,8 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
 	errorMsg := map[string]any{"error": message}
 	var attrs []slog.Attr
-	attrs = append(attrs, slog.String("address", r.URL.String()))
+	attrs = append(attrs, slog.String("request_url", r.URL.String()))
+	attrs = append(attrs, slog.String("request_method", r.Method))
 
 	if rv := reflect.ValueOf(message); rv.Kind() == reflect.Map {
 		for _, key := range rv.MapKeys() {
@@ -38,13 +39,13 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 
 	err := app.writeJSON(w, status, errorMsg, nil)
 	if err != nil {
-		logError(app, r, err)
+		app.logger.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	logError(app, r, err)
+	app.logger.Error(err.Error())
 
 	message := "The server encountered a problem and could not process your request."
 	app.errorResponse(w, r, http.StatusInternalServerError, message)
@@ -72,11 +73,4 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data map[st
 	}
 
 	return nil
-}
-
-func logError(app *application, r *http.Request, err error) {
-	app.logger.Error("Errors: "+err.Error(), map[string]string{
-		"request_method": r.Method,
-		"request_url":    r.URL.String(),
-	})
 }

@@ -36,7 +36,7 @@ func (userModel UserModel) Insert(user *User) error {
 		RETURNING id
 `
 	args := []interface{}{user.Username, user.Email, user.password}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	err := userModel.DB.QueryRowContext(ctx, query, args).Scan(&user.ID)

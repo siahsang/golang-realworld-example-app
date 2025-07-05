@@ -9,4 +9,7 @@ require (
 	golang.org/x/crypto v0.38.0
 )
 
-require github.com/lmittmann/tint v1.1.2 // indirect
+require (
+	github.com/lmittmann/tint v1.1.2 // indirect
+	github.com/mdobak/go-xerrors v0.3.1 // indirect
+)
