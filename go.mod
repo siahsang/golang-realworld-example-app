@@ -7,7 +7,7 @@ require github.com/julienschmidt/httprouter v1.3.0
 require (
 	github.com/golang-cz/devslog v0.0.15
 	github.com/lib/pq v1.10.9
-	github.com/lmittmann/tint v1.1.2
 	github.com/mdobak/go-xerrors v0.3.1
 	golang.org/x/crypto v0.38.0
+	github.com/lib/pq v1.10.9
 )
