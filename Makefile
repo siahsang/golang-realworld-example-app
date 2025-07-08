@@ -37,6 +37,12 @@ db/migrations/up:
 	@echo 'Running up migrations...'
 	migrate -path="./migrations" -database "${DB_DSN}" up
 
+
+.PHONY: db/migrations/down
+db/migrations/down:
+	@echo 'Running up migrations...'
+	migrate -path="./migrations" -database "${DB_DSN}" down
+
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #

@@ -64,7 +64,7 @@ func configLogger() *slog.Logger {
 }
 
 func openDBConnection() (*sql.DB, error) {
-	db, err := sql.Open("postgres", "postgres://postgres:postgres@localhost/greenlight?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://postgres:postgres@localhost/myblog?sslmode=disable")
 	if err != nil {
 		return nil, err
 	}

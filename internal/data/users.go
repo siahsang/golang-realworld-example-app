@@ -39,7 +39,7 @@ func (userModel UserModel) Insert(user *User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := userModel.DB.QueryRowContext(ctx, query, args).Scan(&user.ID)
+	err := userModel.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID)
 
 	if err != nil {
 		switch {
