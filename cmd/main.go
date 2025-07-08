@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"github.com/golang-cz/devslog"
 	_ "github.com/lib/pq"
-	"github.com/lmittmann/tint"
 	"github.com/siahsang/blog/internal/data"
 	"log/slog"
 	"os"
@@ -50,7 +50,15 @@ func main() {
 }
 
 func configLogger() *slog.Logger {
-	handler := tint.NewHandler(os.Stdout, &tint.Options{})
+	handler := devslog.NewHandler(
+		os.Stdout, &devslog.Options{
+			HandlerOptions: &slog.HandlerOptions{
+				AddSource: true,
+				Level:     slog.LevelDebug,
+			},
+			NewLineAfterLog: false,
+		})
+
 	logger := slog.New(handler)
 	return logger
 }
