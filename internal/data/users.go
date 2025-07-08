@@ -3,7 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
-	"errors"
+	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrDuplicateEmail    = errors.New("duplicate email")
-	ErrDuplicateUsername = errors.New("duplicate username")
+	ErrDuplicateEmail    = xerrors.New("duplicate email")
+	ErrDuplicateUsername = xerrors.New("duplicate username")
 )
 
 type User struct {
@@ -48,7 +48,7 @@ func (userModel UserModel) Insert(user *User) error {
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"`:
 			return ErrDuplicateUsername
 		default:
-			return err
+			return xerrors.New(err)
 		}
 	}
 

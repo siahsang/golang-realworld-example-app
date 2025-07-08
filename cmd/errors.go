@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/mdobak/go-xerrors"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -45,7 +46,7 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 }
 
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logger.Error(err.Error())
+	app.logger.Error(err.Error(), slog.Any("error_details", xerrors.Sprint(err)))
 
 	message := "The server encountered a problem and could not process your request."
 	app.errorResponse(w, r, http.StatusInternalServerError, message)
