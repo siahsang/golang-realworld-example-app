@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ErrDuplicateEmail    = xerrors.New("duplicate email")
-	ErrDuplicateUsername = xerrors.New("duplicate username")
+	ErrDuplicateEmail    = xerrors.Message("duplicate email")
+	ErrDuplicateUsername = xerrors.Message("duplicate username")
 )
 
 type User struct {
@@ -77,7 +77,7 @@ func (user *User) SetPassword(plainTextPassword string) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(plainTextPassword), 12)
 
 	if err != nil {
-		return err
+		return xerrors.New(err)
 	}
 
 	user.password = hashedPassword

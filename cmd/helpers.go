@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mdobak/go-xerrors"
 	"io"
 	"net/http"
 )
@@ -25,27 +26,27 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 
 		switch {
 		case errors.As(err, &syntaxError):
-			return fmt.Errorf("body contains badly-formed JSON at (character %d)", syntaxError.Offset)
+			return xerrors.Newf("body contains badly-formed JSON at (character %d)", syntaxError.Offset)
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			return errors.New("body contains badly-formed JSON")
+			return xerrors.Newf("body contains badly-formed JSON")
 
 		case errors.As(err, &unmarshalTypeError):
 			if unmarshalTypeError.Field != "" {
-				return fmt.Errorf("body contains incorrect JSON type for field %q", unmarshalTypeError.Field)
+				return xerrors.Newf("body contains incorrect JSON type for field %q", unmarshalTypeError.Field)
 			}
-			return fmt.Errorf("body contains incorrect JSON type (at character %d)", unmarshalTypeError.Offset)
+			return xerrors.Newf("body contains incorrect JSON type (at character %d)", unmarshalTypeError.Offset)
 		case errors.Is(err, io.EOF):
-			return errors.New("body must not be empty")
+			return xerrors.Newf("body must not be empty")
 
 		case errors.As(err, &maxBytesError):
-			return fmt.Errorf("body must not be larger than %d bytes", maxBytes)
+			return xerrors.Newf("body must not be larger than %d bytes", maxBytes)
 
 		case errors.As(err, &invalidUnmarshalError):
-			return fmt.Errorf("programmer error: invalid unmarshal target: %w", err)
+			return xerrors.Newf("programmer error: invalid unmarshal target: %w", err)
 
 		default:
-			return fmt.Errorf("error decoding JSON: %w", err)
+			return xerrors.Newf("error decoding JSON: %w", err)
 		}
 	}
 

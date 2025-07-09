@@ -5,50 +5,47 @@ import (
 	"github.com/mdobak/go-xerrors"
 	"log/slog"
 	"net/http"
-	"reflect"
 )
 
-func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, message interface{}) {
-	app.errorResponse(w, r, http.StatusBadRequest, message)
+type AppError struct {
+	Error    error
+	Messages map[string]string
+}
+
+func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, appError *AppError) {
+	app.errorResponse(w, r, http.StatusBadRequest, appError)
 }
 
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	message := "The requested resource could not be found."
-	app.errorResponse(w, r, http.StatusNotFound, message)
+	message := xerrors.Newf("The requested resource could not be found.")
+	app.errorResponse(w, r, http.StatusNotFound, &AppError{Error: message})
 }
 
-func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
-	errorMsg := map[string]any{"error": message}
+func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, appError *AppError) {
+	errorResponse := appError.Messages
+
 	var attrs []slog.Attr
 	attrs = append(attrs, slog.String("request_url", r.URL.String()))
 	attrs = append(attrs, slog.String("request_method", r.Method))
+	if appError.Error != nil {
+		attrs = append(attrs, slog.String("stack", xerrors.Sprint(appError.Error)))
+	}
 
-	if rv := reflect.ValueOf(message); rv.Kind() == reflect.Map {
-		for _, key := range rv.MapKeys() {
-			keyStr, ok := key.Interface().(string)
-			if !ok {
-				continue
-			}
-			v := rv.MapIndex(key).Interface()
-			attrs = append(attrs, slog.Any(keyStr, v))
-		}
-	} else {
-		attrs = append(attrs, slog.Any("message", message))
+	for key, valueData := range appError.Messages {
+		attrs = append(attrs, slog.Any(key, valueData))
 	}
 
 	app.logger.LogAttrs(r.Context(), slog.LevelError, "Error in handling request", attrs...)
 
-	err := app.writeJSON(w, status, errorMsg, nil)
+	err := app.writeJSON(w, status, errorResponse, nil)
 	if err != nil {
 		app.logger.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
-func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	message := "The server encountered a problem and could not process your request."
-	app.logger.Error(message, slog.Any("Error_Details", xerrors.Sprint(err)))
-	app.errorResponse(w, r, http.StatusInternalServerError, message)
+func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.errorResponse(w, r, http.StatusInternalServerError, &AppError{Error: err, Messages: map[string]string{"error": "An unexpected error occurred."}})
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
