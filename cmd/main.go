@@ -44,7 +44,7 @@ func main() {
 	}
 
 	if err := app.serve(); err != nil {
-		logger.Error("Error starting server: %v", err)
+		logger.Error("ErrorStack starting server: %v", err)
 		os.Exit(1)
 	}
 }

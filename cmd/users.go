@@ -24,7 +24,8 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := app.readJSON(w, r, &registerUserRequest); err != nil {
 		app.badRequestResponse(w, r, &AppError{
-			Error: err,
+			ErrorMessage: err.Error(),
+			ErrorStack:   err,
 		})
 		return
 	}
@@ -43,7 +44,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	v := validator.New()
 	user.ValidateUser(v)
 	if !v.IsValid() {
-		app.badRequestResponse(w, r, &AppError{Messages: v.Errors})
+		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 		return
 	}
 
@@ -52,11 +53,11 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		switch {
 		case errors.Is(err, data.ErrDuplicateUsername):
 			v.AddError("email", "Email address is already in use")
-			app.badRequestResponse(w, r, &AppError{Messages: v.Errors})
+			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 			return
 		case errors.Is(err, data.ErrDuplicateEmail):
 			v.AddError("username", "Username is already in use")
-			app.badRequestResponse(w, r, &AppError{Messages: v.Errors})
+			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 			return
 		default:
 			app.internalErrorResponse(w, r, err)

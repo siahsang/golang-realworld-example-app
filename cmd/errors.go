@@ -8,8 +8,9 @@ import (
 )
 
 type AppError struct {
-	Error    error
-	Messages map[string]string
+	ErrorStack   error
+	ErrorMessage string
+	ErrorDetails map[string]string
 }
 
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, appError *AppError) {
@@ -17,37 +18,41 @@ func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	message := xerrors.Newf("The requested resource could not be found.")
-	app.errorResponse(w, r, http.StatusNotFound, &AppError{Error: message})
+	app.errorResponse(w, r, http.StatusNotFound, &AppError{
+		ErrorMessage: "The requested resource could not be found.",
+	})
+}
+
+func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.errorResponse(w, r, http.StatusInternalServerError, &AppError{ErrorStack: err,
+		ErrorMessage: "An internal server error occurred.",
+	})
 }
 
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, appError *AppError) {
-	errorResponse := map[string]any{"error": appError.Messages}
+	errorDetails := map[string]any{
+		"errorMessage": appError.ErrorMessage,
+		"errorDetails": appError.ErrorDetails,
+	}
 
 	var attrs []slog.Attr
 	attrs = append(attrs, slog.String("request_url", r.URL.String()))
 	attrs = append(attrs, slog.String("request_method", r.Method))
-	if appError.Error != nil {
-		attrs = append(attrs, slog.String("stack", xerrors.Sprint(appError.Error)))
+	if appError.ErrorStack != nil {
+		attrs = append(attrs, slog.String("stack", xerrors.Sprint(appError.ErrorStack)))
 	}
 
-	for key, valueData := range appError.Messages {
+	for key, valueData := range appError.ErrorDetails {
 		attrs = append(attrs, slog.Any(key, valueData))
 	}
 
-	app.logger.LogAttrs(r.Context(), slog.LevelError, "Error in handling request", attrs...)
+	app.logger.LogAttrs(r.Context(), slog.LevelError, "ErrorStack in handling request", attrs...)
 
-	err := app.writeJSON(w, status, errorResponse, nil)
+	err := app.writeJSON(w, status, errorDetails, nil)
 	if err != nil {
 		app.logger.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-}
-
-func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.errorResponse(w, r, http.StatusInternalServerError, &AppError{Error: err,
-		Messages: map[string]string{"error": "An unexpected error occurred."},
-	})
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
