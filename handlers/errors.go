@@ -50,7 +50,7 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 		attrs = append(attrs, slog.Any(key, valueData))
 	}
 
-	app.logger.LogAttrs(r.Context(), slog.LevelError, "ErrorStack in handling request", attrs...)
+	app.logger.LogAttrs(r.Context(), slog.LevelError, "Error in handling request", attrs...)
 
 	err := app.writeJSON(w, status, errorDetails, nil)
 	if err != nil {

@@ -9,6 +9,7 @@ func (app *application) routes() http.Handler {
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 
 	router.HandlerFunc(http.MethodPost, "/api/users", app.registerUserHandler)
+	router.HandlerFunc(http.MethodPost, "/api/users/login", app.loginHandler)
 
 	return router
 }

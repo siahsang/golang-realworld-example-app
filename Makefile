@@ -40,9 +40,13 @@ db/migrations/up:
 
 .PHONY: db/migrations/down
 db/migrations/down:
-	@echo 'Running up migrations...'
+	@echo 'Running down migrations...'
 	migrate -path="./migrations" -database "${DB_DSN}" down
 
+
+db/truncate:
+	@echo 'Truncating all tables...'
+	psql ${DB_DSN} -c "TRUNCATE TABLE users, movies, rentals, notifications, sessions, tokens, user_roles, roles RESTART IDENTITY CASCADE"
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #
