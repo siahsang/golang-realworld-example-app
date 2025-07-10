@@ -57,6 +57,30 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	return nil
 }
 
+func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
+	js, err := json.MarshalIndent(data, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	// Append a newline to make it easier to view in terminal applications.
+	js = append(js, '\n')
+
+	// Add any headers that we want to include.
+	for key, value := range headers {
+		w.Header()[key] = value
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	if _, err := w.Write(js); err != nil {
+		app.logger.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (app *application) doInBackground(fn func()) {
 	app.wg.Add(1)
 	go func() {

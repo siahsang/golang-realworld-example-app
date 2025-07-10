@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/mdobak/go-xerrors"
 	"log/slog"
 	"net/http"
@@ -30,9 +29,14 @@ func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Req
 }
 
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, appError *AppError) {
-	errorDetails := map[string]any{
-		"errorMessage": appError.ErrorMessage,
-		"errorDetails": appError.ErrorDetails,
+	errorDetails := map[string]any{}
+
+	if appError.ErrorMessage != "" {
+		errorDetails["errorMessage"] = appError.ErrorMessage
+	}
+
+	if appError.ErrorDetails != nil {
+		errorDetails["errorDetails"] = appError.ErrorDetails
 	}
 
 	var attrs []slog.Attr
@@ -53,28 +57,4 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 		app.logger.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-}
-
-func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
-	js, err := json.MarshalIndent(data, "", "\t")
-	if err != nil {
-		return err
-	}
-
-	// Append a newline to make it easier to view in terminal applications.
-	js = append(js, '\n')
-
-	// Add any headers that we want to include.
-	for key, value := range headers {
-		w.Header()[key] = value
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	if _, err := w.Write(js); err != nil {
-		app.logger.Error(err.Error())
-		return err
-	}
-
-	return nil
 }
