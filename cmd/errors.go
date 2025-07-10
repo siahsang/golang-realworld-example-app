@@ -22,7 +22,7 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, appError *AppError) {
-	errorResponse := appError.Messages
+	errorResponse := map[string]any{"error": appError.Messages}
 
 	var attrs []slog.Attr
 	attrs = append(attrs, slog.String("request_url", r.URL.String()))
@@ -45,7 +45,9 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 }
 
 func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.errorResponse(w, r, http.StatusInternalServerError, &AppError{Error: err, Messages: map[string]string{"error": "An unexpected error occurred."}})
+	app.errorResponse(w, r, http.StatusInternalServerError, &AppError{Error: err,
+		Messages: map[string]string{"error": "An unexpected error occurred."},
+	})
 }
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data map[string]any, headers http.Header) error {
