@@ -13,7 +13,7 @@ import (
 )
 
 type application struct {
-	models database.DB
+	core   *database.Core
 	logger *slog.Logger
 	wg     sync.WaitGroup
 }
@@ -38,7 +38,7 @@ func main() {
 	logger.Info("Database connection established successfully")
 
 	app := application{
-		models: database.NewDB(db, logger),
+		core:   database.NewDB(db, logger),
 		logger: logger,
 		wg:     sync.WaitGroup{},
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/validator"
 	"golang.org/x/crypto/bcrypt"
-	"log/slog"
 	"time"
 )
 
@@ -34,7 +33,7 @@ type Claim struct {
 	jwt.RegisteredClaims
 }
 
-func (userModel UserModel) Insert(user *User) error {
+func (c *Core) Insert(user *User) error {
 	query := `
 		INSERT INTO users (username, email, password)
 		VALUES ($1, $2, $3)
@@ -44,7 +43,7 @@ func (userModel UserModel) Insert(user *User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := userModel.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID)
+	err := c.db.QueryRowContext(ctx, query, args...).Scan(&user.ID)
 
 	if err != nil {
 		switch {
@@ -60,7 +59,7 @@ func (userModel UserModel) Insert(user *User) error {
 	return nil
 }
 
-func (userModel UserModel) GetByEmail(email string) (*User, error) {
+func (c *Core) GetByEmail(email string) (*User, error) {
 	query := `
 		SELECT id, email, username, password
 		FROM users
@@ -72,7 +71,7 @@ func (userModel UserModel) GetByEmail(email string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := userModel.DB.QueryRowContext(ctx, query, email).Scan(
+	err := c.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Username,

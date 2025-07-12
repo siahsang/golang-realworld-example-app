@@ -49,7 +49,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err := app.models.Users.Insert(user)
+	err := app.core.Insert(user)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.ErrDuplicateUsername):
@@ -106,7 +106,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := app.models.Users.GetByEmail(loginUserRequest.Email)
+	user, err := app.core.GetByEmail(loginUserRequest.Email)
 	if err != nil {
 		switch {
 		case errors.Is(err, database.NoRecordFound):
