@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"github.com/golang-cz/devslog"
 	_ "github.com/lib/pq"
-	"github.com/siahsang/blog/internal/database"
+	"github.com/siahsang/blog/internal/core"
 	"log/slog"
 	"os"
 	"sync"
@@ -13,7 +13,7 @@ import (
 )
 
 type application struct {
-	core   *database.Core
+	core   *core.Core
 	logger *slog.Logger
 	wg     sync.WaitGroup
 }
@@ -38,7 +38,7 @@ func main() {
 	logger.Info("Database connection established successfully")
 
 	app := application{
-		core:   database.NewDB(db, logger),
+		core:   core.NewDB(db, logger),
 		logger: logger,
 		wg:     sync.WaitGroup{},
 	}

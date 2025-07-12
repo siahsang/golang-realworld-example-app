@@ -2,9 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/siahsang/blog/internal/database"
+	"github.com/siahsang/blog/internal/auth"
+	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/validator"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -31,11 +33,14 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	user := &database.User{
+	user := &auth.User{
 		Email:             registerUserRequest.Email,
 		Username:          registerUserRequest.Username,
 		PlaintextPassword: registerUserRequest.Password,
 	}
+
+	user.Email = strings.TrimSpace(user.Email)
+	user.Username = strings.TrimSpace(user.Username)
 
 	if err := user.SetPassword(registerUserRequest.Password); err != nil {
 		app.internalErrorResponse(w, r, err)
@@ -43,7 +48,19 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	v := validator.New()
-	user.ValidateUser(v)
+	checkEmail(v, user.Email)
+
+	// check username
+	v.CheckNotBlank(user.Username, "username", "must be provided")
+	v.Check(len(user.Username) >= 5, "username", "must be at least 5 characters long")
+
+	// check PlaintextPassword
+	v.CheckNotBlank(user.PlaintextPassword, "Plaintext Password", "must be provided")
+	v.Check(len(user.PlaintextPassword) >= 8, "Plaintext Password", "must be at least 8 characters long")
+
+	// check password
+	v.CheckNotBlank(string(user.Password), "password", "must be provided")
+
 	if !v.IsValid() {
 		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 		return
@@ -52,11 +69,11 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	err := app.core.Insert(user)
 	if err != nil {
 		switch {
-		case errors.Is(err, database.ErrDuplicateUsername):
+		case errors.Is(err, core.ErrDuplicateUsername):
 			v.AddError("email", "Email address is already in use")
 			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 			return
-		case errors.Is(err, database.ErrDuplicateEmail):
+		case errors.Is(err, core.ErrDuplicateEmail):
 			v.AddError("username", "Username is already in use")
 			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 			return
@@ -99,8 +116,14 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v := validator.New()
-	database.ValidateEmail(v, loginUserRequest.Email)
-	database.ValidatePasswordPlaintext(v, loginUserRequest.Password)
+
+	// check email
+	v.CheckNotBlank(loginUserRequest.Email, "email", "must be provided")
+	v.CheckEmail(loginUserRequest.Email, "must be a valid email address")
+
+	// check password
+	v.CheckNotBlank(loginUserRequest.Password, "password", "must be provided")
+
 	if !v.IsValid() {
 		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 		return
@@ -109,7 +132,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := app.core.GetByEmail(loginUserRequest.Email)
 	if err != nil {
 		switch {
-		case errors.Is(err, database.NoRecordFound):
+		case errors.Is(err, core.NoRecordFound):
 			app.badRequestResponse(w, r, &AppError{
 				ErrorMessage: "Invalid credentials",
 				ErrorStack:   err,
@@ -142,7 +165,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func userResponse(user *database.User, token string) envelope {
+func userResponse(user *auth.User, token string) envelope {
 	user.Token = token
 	return envelope{"user": user}
 }
