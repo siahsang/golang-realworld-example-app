@@ -1,4 +1,4 @@
-package data
+package database
 
 import (
 	"context"
@@ -32,11 +32,6 @@ type Claim struct {
 	Email    string `json:"email"`
 
 	jwt.RegisteredClaims
-}
-
-type UserModel struct {
-	DB  *sql.DB
-	log *slog.Logger
 }
 
 func (userModel UserModel) Insert(user *User) error {

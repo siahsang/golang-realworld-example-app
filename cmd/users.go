@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/siahsang/blog/internal/data"
+	"github.com/siahsang/blog/internal/database"
 	"github.com/siahsang/blog/internal/validator"
 	"net/http"
 	"time"
@@ -31,7 +31,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	user := &data.User{
+	user := &database.User{
 		Email:             registerUserRequest.Email,
 		Username:          registerUserRequest.Username,
 		PlaintextPassword: registerUserRequest.Password,
@@ -52,11 +52,11 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	err := app.models.Users.Insert(user)
 	if err != nil {
 		switch {
-		case errors.Is(err, data.ErrDuplicateUsername):
+		case errors.Is(err, database.ErrDuplicateUsername):
 			v.AddError("email", "Email address is already in use")
 			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 			return
-		case errors.Is(err, data.ErrDuplicateEmail):
+		case errors.Is(err, database.ErrDuplicateEmail):
 			v.AddError("username", "Username is already in use")
 			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 			return
@@ -99,8 +99,8 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	v := validator.New()
-	data.ValidateEmail(v, loginUserRequest.Email)
-	data.ValidatePasswordPlaintext(v, loginUserRequest.Password)
+	database.ValidateEmail(v, loginUserRequest.Email)
+	database.ValidatePasswordPlaintext(v, loginUserRequest.Password)
 	if !v.IsValid() {
 		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 		return
@@ -109,7 +109,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := app.models.Users.GetByEmail(loginUserRequest.Email)
 	if err != nil {
 		switch {
-		case errors.Is(err, data.NoRecordFound):
+		case errors.Is(err, database.NoRecordFound):
 			app.badRequestResponse(w, r, &AppError{
 				ErrorMessage: "Invalid credentials",
 				ErrorStack:   err,
@@ -142,7 +142,7 @@ func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func userResponse(user *data.User, token string) envelope {
+func userResponse(user *database.User, token string) envelope {
 	user.Token = token
 	return envelope{"user": user}
 }
