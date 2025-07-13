@@ -4,11 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
-	"github.com/siahsang/blog/internal/validator"
-	"golang.org/x/crypto/bcrypt"
 	"time"
 )
 
@@ -24,7 +21,7 @@ func (c *Core) Insert(user *auth.User) error {
 		VALUES ($1, $2, $3)
 		RETURNING id
 `
-	args := []interface{}{user.Username, user.Email, user.password}
+	args := []interface{}{user.Username, user.Email, user.Password}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
