@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	ErrDuplicateEmail    = xerrors.Message("duplicate email")
-	ErrDuplicateUsername = xerrors.Message("duplicate username")
-	NoRecordFound        = xerrors.Message("record not found")
+	ErrDuplicateEmail    = xerrors.Message("Duplicate email")
+	ErrDuplicateUsername = xerrors.Message("Duplicate username")
+	NoRecordFound        = xerrors.Message("User not found")
 )
 
 func (c *Core) Insert(user *auth.User) error {
@@ -70,4 +70,8 @@ func (c *Core) GetByEmail(email string) (*auth.User, error) {
 	}
 
 	return &user, nil
+}
+
+func (c *Core) Update() {
+
 }

@@ -8,8 +8,8 @@ func (app *application) routes() http.Handler {
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 
-	router.HandlerFunc(http.MethodPost, "/api/users", app.registerUserHandler)
-	router.HandlerFunc(http.MethodPost, "/api/users/login", app.loginHandler)
+	router.HandlerFunc(http.MethodPost, "/api/users", app.createUser)
+	router.HandlerFunc(http.MethodPost, "/api/users/login", app.login)
 
 	return router
 }
