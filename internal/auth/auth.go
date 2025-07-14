@@ -33,7 +33,7 @@ func (user *User) IsPasswordMatch(plainTextPassword string) (bool, error) {
 
 func (user *User) GenerateToken(duration time.Duration) (string, error) {
 	expireAt := time.Now().Add(duration)
-	claim := Claim{
+	claim := UserClaim{
 		Username: user.Username,
 		Email:    user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -47,4 +47,28 @@ func (user *User) GenerateToken(duration time.Duration) (string, error) {
 	signedString, err := token.SignedString([]byte("your-secret-key"))
 
 	return signedString, xerrors.New(err)
+}
+
+func Authenticate(tokenString string) (*UserClaim, error) {
+	parsedToken, err := jwt.ParseWithClaims(tokenString, &UserClaim{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, xerrors.New("unexpected signing method")
+		}
+		// todo: replace with the env variable
+		return []byte("your-secret-key"), nil
+	})
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	if !parsedToken.Valid {
+		return nil, xerrors.New("invalid token")
+	}
+
+	if claim, ok := parsedToken.Claims.(*UserClaim); ok {
+		return claim, nil
+	} else {
+		return nil, xerrors.New("could not parse claims")
+	}
 }

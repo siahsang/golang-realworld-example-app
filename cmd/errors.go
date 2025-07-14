@@ -17,18 +17,23 @@ func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	app.errorResponse(w, r, http.StatusNotFound, &AppError{
+	app.errorResponse(w, r, http.StatusNotFound, nil, &AppError{
 		ErrorMessage: "The requested resource could not be found.",
 	})
 }
 
+func (app *application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {
+	w.Header()
+
+}
+
 func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.errorResponse(w, r, http.StatusInternalServerError, &AppError{ErrorStack: err,
+	app.errorResponse(w, r, http.StatusInternalServerError, nil, &AppError{ErrorStack: err,
 		ErrorMessage: "An internal server error occurred.",
 	})
 }
 
-func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, appError *AppError) {
+func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, headers http.Header, appError *AppError) {
 	errorDetails := map[string]any{}
 
 	if appError.ErrorMessage != "" {
@@ -52,7 +57,7 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 
 	app.logger.LogAttrs(r.Context(), slog.LevelError, "Error in handling request", attrs...)
 
-	err := app.writeJSON(w, status, errorDetails, nil)
+	err := app.writeJSON(w, status, errorDetails, headers)
 	if err != nil {
 		app.logger.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)

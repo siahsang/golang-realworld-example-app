@@ -11,7 +11,7 @@ type User struct {
 	PlaintextPassword string `json:"-"`
 }
 
-type Claim struct {
+type UserClaim struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 
