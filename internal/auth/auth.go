@@ -49,7 +49,7 @@ func (user *User) GenerateToken(duration time.Duration) (string, error) {
 	return signedString, xerrors.New(err)
 }
 
-func Authenticate(tokenString string) (*UserClaim, error) {
+func (auth *Auth) Authenticate(tokenString string) (*UserClaim, error) {
 	parsedToken, err := jwt.ParseWithClaims(tokenString, &UserClaim{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, xerrors.New("unexpected signing method")
@@ -71,4 +71,16 @@ func Authenticate(tokenString string) (*UserClaim, error) {
 	} else {
 		return nil, xerrors.New("could not parse claims")
 	}
+}
+
+func (auth *Auth) SetAuthenticatedUser(user *User) {
+	auth.authenticatedUser = user
+}
+
+func (auth *Auth) GetAuthenticatedUser() *User {
+	return auth.authenticatedUser
+}
+
+func (auth *Auth) IsUserAuthenticated() bool {
+	return auth.authenticatedUser != nil
 }

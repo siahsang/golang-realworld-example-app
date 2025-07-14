@@ -116,6 +116,10 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authenticatedUser := app.auth.GetAuthenticatedUser()
+	authenticatedUser.Bio = updateUserRequest.bio
+	authenticatedUser.Image = updateUserRequest.image
+
 	user, err := app.core.GetByEmail(updateUserRequest.Email)
 	if err != nil {
 		switch {

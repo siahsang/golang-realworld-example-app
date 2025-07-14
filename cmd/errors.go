@@ -13,7 +13,7 @@ type AppError struct {
 }
 
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, appError *AppError) {
-	app.errorResponse(w, r, http.StatusBadRequest, appError)
+	app.errorResponse(w, r, http.StatusBadRequest, nil, appError)
 }
 
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
@@ -23,8 +23,16 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 }
 
 func (app *application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {
-	w.Header()
+	w.Header().Add("WWW-Authenticate", "Bearer")
+	app.errorResponse(w, r, http.StatusUnauthorized, nil, &AppError{
+		ErrorMessage: "Invalid authentication token.",
+	})
+}
 
+func (app *application) authenticationRequired(w http.ResponseWriter, r *http.Request) {
+	app.errorResponse(w, r, http.StatusUnauthorized, nil, &AppError{
+		ErrorMessage: "Authentication is required to access this resource.",
+	})
 }
 
 func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {

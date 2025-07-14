@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"github.com/golang-cz/devslog"
 	_ "github.com/lib/pq"
+	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"log/slog"
 	"os"
@@ -13,6 +14,7 @@ import (
 )
 
 type application struct {
+	auth   *auth.Auth
 	core   *core.Core
 	logger *slog.Logger
 	wg     sync.WaitGroup
@@ -38,6 +40,7 @@ func main() {
 	logger.Info("Database connection established successfully")
 
 	app := application{
+		auth:   auth.New(),
 		core:   core.NewDB(db, logger),
 		logger: logger,
 		wg:     sync.WaitGroup{},

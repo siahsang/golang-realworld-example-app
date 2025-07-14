@@ -72,6 +72,31 @@ func (c *Core) GetByEmail(email string) (*auth.User, error) {
 	return &user, nil
 }
 
-func (c *Core) Update() {
+func (c *Core) Update(user *auth.User) error {
+	query := `
+		UPDATE users
+		SET email = $1, username = $2, password = $3
+		WHERE id = $4
+	`
+
+	args := []interface{}{user.Email, user.Username, user.Password, user.ID}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := c.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return xerrors.New(err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return xerrors.New(err)
+	}
+
+	if rowsAffected == 0 {
+		return NoRecordFound
+	}
+
+	return nil
 
 }
