@@ -5,6 +5,7 @@ import (
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/validator"
+	"github.com/siahsang/blog/internal/web"
 	"net/http"
 	"strings"
 	"time"
@@ -98,8 +99,8 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	type updateUserPayload struct {
 		Email string `json:"email"`
-		bio   string `json:"bio"`
-		image string `json:"image"`
+		Bio   string `json:"bio"`
+		Image string `json:"image"`
 	}
 
 	type UpdateUserRequest struct {
@@ -116,18 +117,15 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authenticatedUser := app.auth.GetAuthenticatedUser()
-	authenticatedUser.Bio = updateUserRequest.bio
-	authenticatedUser.Image = updateUserRequest.image
+	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
+	authenticatedUser.Bio = updateUserRequest.Bio
+	authenticatedUser.Image = updateUserRequest.Image
+	updateUser, err := app.core.Update(authenticatedUser)
 
-	user, err := app.core.GetByEmail(updateUserRequest.Email)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
-			app.badRequestResponse(w, r, &AppError{
-				ErrorMessage: "User not found",
-				ErrorStack:   err,
-			})
+			app.notFoundResponse(w, r)
 			return
 		default:
 			app.internalErrorResponse(w, r, err)
@@ -135,9 +133,16 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := app.writeJSON(w, http.StatusAccepted, userResponse(user, token), nil); err != nil {
+	token, ok := web.GetValueFromContext[string](r, auth.UserCtxKey)
+	if !ok {
+		app.authenticationRequiredResponse(w, r)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusAccepted, userResponse(updateUser, token), nil); err != nil {
 		app.internalErrorResponse(w, r, err)
 	}
+
 }
 
 func userResponse(user *auth.User, token string) envelope {

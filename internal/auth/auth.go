@@ -4,8 +4,19 @@ import (
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/web"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
 	"time"
+)
+
+const (
+	UserCtxKey  = "user_data"
+	TokenCtxKey = "token"
+)
+
+var (
+	NotAuthenticatesUser = xerrors.Message("Not authenticated user")
 )
 
 func (user *User) SetPassword(plainTextPassword string) error {
@@ -73,14 +84,25 @@ func (auth *Auth) Authenticate(tokenString string) (*UserClaim, error) {
 	}
 }
 
-func (auth *Auth) SetAuthenticatedUser(user *User) {
-	auth.authenticatedUser = user
+func (auth *Auth) GetAuthenticatedUser(r *http.Request) (*User, error) {
+	user, ok := web.GetValueFromContext[*User](r, UserCtxKey)
+	if !ok {
+		return nil, NotAuthenticatesUser
+	}
+
+	return user, nil
 }
 
-func (auth *Auth) GetAuthenticatedUser() *User {
-	return auth.authenticatedUser
+func (auth *Auth) SetAuthenticatedUser(r *http.Request, user *User, token string) *http.Request {
+	request := web.AddValueToContext(r, UserCtxKey, user)
+	return web.AddValueToContext(request, TokenCtxKey, token)
 }
 
-func (auth *Auth) IsUserAuthenticated() bool {
-	return auth.authenticatedUser != nil
+func (auth *Auth) CacheAuthenticatedUser(user *User) {
+	auth.authenticatedUsers.Store(user.Username, user)
+}
+
+func (auth *Auth) IsUserAuthenticated(r *http.Request) bool {
+	_, err := auth.GetAuthenticatedUser(r)
+	return err == nil
 }

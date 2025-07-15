@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/siahsang/blog/internal/utils"
 )
 
 type User struct {
@@ -11,8 +12,8 @@ type User struct {
 	Username          string `json:"username"`
 	Password          []byte `json:"-"`
 	PlaintextPassword string `json:"-"`
-	Bio               string `json:"bio,omitempty"`
-	Image             string `json:"image,omitempty"`
+	Bio               string `json:"bio"`
+	Image             string `json:"image"`
 }
 
 type UserClaim struct {
@@ -23,7 +24,7 @@ type UserClaim struct {
 }
 
 type Auth struct {
-	authenticatedUser *User
+	authenticatedUsers *utils.SafeMap[string, *User]
 }
 
 func New() *Auth {

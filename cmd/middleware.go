@@ -15,13 +15,13 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		if autherization != "" {
 			autherizationParts := strings.Split(autherization, " ")
 			if len(autherizationParts) != 2 || autherizationParts[0] != "Token" {
-				app.invalidAuthenticationToken(w, r)
+				app.invalidAuthenticationTokenResponse(w, r)
 				return
 			}
 			token := autherizationParts[1]
 			authenticate, err := app.auth.Authenticate(token)
 			if err != nil {
-				app.invalidAuthenticationToken(w, r)
+				app.invalidAuthenticationTokenResponse(w, r)
 				return
 			}
 
@@ -34,7 +34,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 				app.internalErrorResponse(w, r, err)
 				return
 			}
-			app.auth.SetAuthenticatedUser(user)
+			r = app.auth.SetAuthenticatedUser(r, user, token)
 		}
 
 		next.ServeHTTP(w, r)
@@ -43,8 +43,9 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 
 func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !app.auth.IsUserAuthenticated() {
-			app.authenticationRequired(w, r)
+		if !app.auth.IsUserAuthenticated(r) {
+			app.logger.Error("authentication required")
+			app.authenticationRequiredResponse(w, r)
 			return
 		}
 		next(w, r)

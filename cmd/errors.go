@@ -22,14 +22,14 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (app *application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("WWW-Authenticate", "Bearer")
 	app.errorResponse(w, r, http.StatusUnauthorized, nil, &AppError{
 		ErrorMessage: "Invalid authentication token.",
 	})
 }
 
-func (app *application) authenticationRequired(w http.ResponseWriter, r *http.Request) {
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
 	app.errorResponse(w, r, http.StatusUnauthorized, nil, &AppError{
 		ErrorMessage: "Authentication is required to access this resource.",
 	})
