@@ -56,7 +56,6 @@ func (user *User) GenerateToken(duration time.Duration) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	// todo: replace with the env variable
 	signedString, err := token.SignedString([]byte("your-secret-key"))
-
 	return signedString, xerrors.New(err)
 }
 
@@ -93,9 +92,8 @@ func (auth *Auth) GetAuthenticatedUser(r *http.Request) (*User, error) {
 	return user, nil
 }
 
-func (auth *Auth) SetAuthenticatedUser(r *http.Request, user *User, token string) *http.Request {
-	request := web.AddValueToContext(r, UserCtxKey, user)
-	return web.AddValueToContext(request, TokenCtxKey, token)
+func (auth *Auth) SetAuthenticatedUser(r *http.Request, user *User) *http.Request {
+	return web.AddValueToContext(r, UserCtxKey, user)
 }
 
 func (auth *Auth) CacheAuthenticatedUser(user *User) {

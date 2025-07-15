@@ -34,7 +34,8 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 				app.internalErrorResponse(w, r, err)
 				return
 			}
-			r = app.auth.SetAuthenticatedUser(r, user, token)
+			user.Token = token
+			r = app.auth.SetAuthenticatedUser(r, user)
 		}
 
 		next.ServeHTTP(w, r)

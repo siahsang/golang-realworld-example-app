@@ -68,12 +68,13 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token, err := user.GenerateToken(time.Hour * 24 * 1)
+	user.Token = token
 	if err != nil {
 		app.internalErrorResponse(w, r, err)
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusAccepted, userResponse(user, token), nil); err != nil {
+	if err := app.writeJSON(w, http.StatusAccepted, userResponse(user), nil); err != nil {
 		app.internalErrorResponse(w, r, err)
 	}
 }
