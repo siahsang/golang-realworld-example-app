@@ -43,7 +43,7 @@ func (c *Core) Insert(user *auth.User) error {
 
 func (c *Core) GetByEmail(email string) (*auth.User, error) {
 	query := `
-		SELECT id, email, username, password
+		SELECT id, email, username, password, bio, image
 		FROM users
 		WHERE email = $1
 	`
@@ -58,6 +58,8 @@ func (c *Core) GetByEmail(email string) (*auth.User, error) {
 		&user.Email,
 		&user.Username,
 		&user.Password,
+		&user.Bio,
+		&user.Image,
 	)
 
 	if err != nil {
@@ -82,7 +84,7 @@ func (c *Core) Update(user *auth.User) (*auth.User, error) {
 	`
 
 	var returningUser auth.User
-	args := []interface{}{user.Bio, user.Email, user.ID}
+	args := []interface{}{user.Bio, user.Image, user.ID}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

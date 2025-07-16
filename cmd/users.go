@@ -141,6 +141,19 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (app *application) getUser(w http.ResponseWriter, r *http.Request) {
+	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
+
+	if authenticatedUser == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, userResponse(authenticatedUser), nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+	}
+}
+
 func userResponse(user *auth.User) envelope {
 	return envelope{"user": user}
 }
