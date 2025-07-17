@@ -100,9 +100,9 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 // todo : support Bio and Image as Optional property and Email is Required
 func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	type updateUserPayload struct {
-		Email string `json:"email"`
-		Bio   string `json:"bio"`
-		Image string `json:"image"`
+		Email string  `json:"email"`
+		Bio   *string `json:"bio"`
+		Image *string `json:"image"`
 	}
 
 	type UpdateUserRequest struct {
@@ -120,8 +120,26 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
-	authenticatedUser.Bio = &updateUserRequest.Bio
-	authenticatedUser.Image = &updateUserRequest.Image
+
+	if updateUserRequest.Bio != nil {
+		trimmedBio := strings.TrimSpace(*updateUserRequest.Bio)
+		authenticatedUser.Bio = &trimmedBio
+	}
+
+	if updateUserRequest.Image != nil {
+		trimmedImage := strings.TrimSpace(*updateUserRequest.Image)
+		authenticatedUser.Image = &trimmedImage
+	}
+
+	v := validator.New()
+	checkEmail(v, updateUserRequest.Email)
+
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
+		return
+	}
+
+	authenticatedUser.Email = strings.TrimSpace(updateUserRequest.Email)
 	updateUser, err := app.core.Update(authenticatedUser)
 	updateUser.Token = authenticatedUser.Token
 
