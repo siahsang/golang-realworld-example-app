@@ -65,7 +65,7 @@ func (c *Core) GetByEmail(email string) (*auth.User, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			return nil, NoRecordFound
+			return nil, xerrors.New(NoRecordFound)
 		default:
 			return nil, xerrors.New(err)
 		}
@@ -99,7 +99,7 @@ func (c *Core) Update(user *auth.User) (*auth.User, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			return nil, NoRecordFound
+			return nil, xerrors.New(NoRecordFound)
 		default:
 			return nil, xerrors.New(err)
 		}

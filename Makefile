@@ -41,7 +41,7 @@ db/migrations/up:
 .PHONY: db/migrations/down
 db/migrations/down:
 	@echo 'Running down migrations...'
-	migrate -path="./migrations" -database "${DB_DSN}" down
+	migrate -path="./migrations" -database "${DB_DSN}" down 1
 
 
 db/truncate:
