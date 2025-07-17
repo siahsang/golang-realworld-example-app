@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/julienschmidt/httprouter"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/validator"
@@ -152,6 +153,33 @@ func (app *application) getUser(w http.ResponseWriter, r *http.Request) {
 	if err := app.writeJSON(w, http.StatusOK, userResponse(authenticatedUser), nil); err != nil {
 		app.internalErrorResponse(w, r, err)
 	}
+}
+
+func (app *application) getProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ps.ByName("username")
+	//username := strings.TrimSpace(r.URL.Query().Get("username"))
+	//if username == "" {
+	//	app.badRequestResponse(w, r, &AppError{
+	//		ErrorMessage: "Username is required",
+	//	})
+	//	return
+	//}
+	//
+	//user, err := app.core.GetByUsername(username)
+	//if err != nil {
+	//	switch {
+	//	case errors.Is(err, core.NoRecordFound):
+	//		app.notFoundResponse(w, r)
+	//		return
+	//	default:
+	//		app.internalErrorResponse(w, r, err)
+	//		return
+	//	}
+	//}
+	//
+	//if err := app.writeJSON(w, http.StatusOK, userResponse(user), nil); err != nil {
+	//	app.internalErrorResponse(w, r, err)
+	//}
 }
 
 func userResponse(user *auth.User) envelope {

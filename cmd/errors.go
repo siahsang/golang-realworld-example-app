@@ -22,9 +22,10 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Add("WWW-Authenticate", "Bearer")
 	app.errorResponse(w, r, http.StatusUnauthorized, nil, &AppError{
+		ErrorStack:   err,
 		ErrorMessage: "Invalid authentication token.",
 	})
 }

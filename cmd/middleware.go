@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/core"
 	"net/http"
 	"strings"
@@ -15,13 +16,13 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		if autherization != "" {
 			autherizationParts := strings.Split(autherization, " ")
 			if len(autherizationParts) != 2 || autherizationParts[0] != "Token" {
-				app.invalidAuthenticationTokenResponse(w, r)
+				app.invalidAuthenticationTokenResponse(w, r, xerrors.New("Authentication header must be in the format 'Token <token>'"))
 				return
 			}
 			token := autherizationParts[1]
 			authenticate, err := app.auth.Authenticate(token)
 			if err != nil {
-				app.invalidAuthenticationTokenResponse(w, r)
+				app.invalidAuthenticationTokenResponse(w, r, err)
 				return
 			}
 
