@@ -46,8 +46,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !app.auth.IsUserAuthenticated(r) {
-			app.logger.Error("authentication required")
-			app.authenticationRequiredResponse(w, r)
+			app.authenticationRequiredResponse(w, r, xerrors.Newf("authentication required"))
 			return
 		}
 		next(w, r)

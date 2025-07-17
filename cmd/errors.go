@@ -30,9 +30,10 @@ func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter
 	})
 }
 
-func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.errorResponse(w, r, http.StatusUnauthorized, nil, &AppError{
 		ErrorMessage: "Authentication is required to access this resource.",
+		ErrorStack:   err,
 	})
 }
 

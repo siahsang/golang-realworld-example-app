@@ -120,8 +120,8 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
-	authenticatedUser.Bio = updateUserRequest.Bio
-	authenticatedUser.Image = updateUserRequest.Image
+	authenticatedUser.Bio = &updateUserRequest.Bio
+	authenticatedUser.Image = &updateUserRequest.Image
 	updateUser, err := app.core.Update(authenticatedUser)
 	updateUser.Token = authenticatedUser.Token
 

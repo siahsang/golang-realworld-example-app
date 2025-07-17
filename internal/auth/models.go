@@ -6,14 +6,14 @@ import (
 )
 
 type User struct {
-	ID                int64  `json:"-"`
-	Email             string `json:"email"`
-	Token             string `json:"token,omitempty"`
-	Username          string `json:"username"`
-	Password          []byte `json:"-"`
-	PlaintextPassword string `json:"-"`
-	Bio               string `json:"bio"`
-	Image             string `json:"image"`
+	ID                int64   `json:"-"`
+	Email             string  `json:"email"`
+	Token             string  `json:"token,omitempty"`
+	Username          string  `json:"username"`
+	Password          []byte  `json:"-"`
+	PlaintextPassword string  `json:"-"`
+	Bio               *string `json:"bio"`
+	Image             *string `json:"image"`
 }
 
 type UserClaim struct {
