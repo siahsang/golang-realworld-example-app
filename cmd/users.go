@@ -56,8 +56,8 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 	v.Check(len(user.Username) >= 5, "username", "must be at least 5 characters long")
 
 	// check PlaintextPassword
-	v.CheckNotBlank(user.PlaintextPassword, "Plaintext Password", "must be provided")
-	v.Check(len(user.PlaintextPassword) >= 8, "Plaintext Password", "must be at least 8 characters long")
+	v.CheckNotBlank(user.PlaintextPassword, "plaintext password", "must be provided")
+	v.Check(len(user.PlaintextPassword) >= 8, "plaintext password", "must be at least 8 characters long")
 
 	// check password
 	v.CheckNotBlank(string(user.Password), "password", "must be provided")
@@ -97,7 +97,6 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// todo : support Bio and Image as Optional property and Email is Required
 func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	type updateUserPayload struct {
 		Email string  `json:"email"`
@@ -186,6 +185,47 @@ func (app *application) getProfile(w http.ResponseWriter, r *http.Request, ps ht
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
+			app.badRequestResponse(w, r, &AppError{
+				ErrorMessage: err.Error(),
+				ErrorStack:   err,
+			})
+			return
+		default:
+			app.internalErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, envelope{"profile": profile}, nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+	}
+}
+
+func (app *application) followUser(w http.ResponseWriter, r *http.Request) {
+	parms := httprouter.ParamsFromContext(r.Context())
+	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
+
+	followeeUsername := strings.TrimSpace(parms.ByName("followee"))
+	v := validator.New()
+	v.CheckNotBlank(followeeUsername, "followee", "must be provided")
+
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, &AppError{
+			ErrorMessage: "Followee username must be provided",
+		})
+		return
+	}
+
+	profile, err := app.core.FollowUser(*authenticatedUser, followeeUsername)
+	if err != nil {
+		switch {
+		case errors.Is(err, core.NoRecordFound):
+			app.badRequestResponse(w, r, &AppError{
+				ErrorMessage: err.Error(),
+				ErrorStack:   err,
+			})
+			return
+		case errors.Is(err, core.UserIsAlreadyFollowed):
 			app.badRequestResponse(w, r, &AppError{
 				ErrorMessage: err.Error(),
 				ErrorStack:   err,

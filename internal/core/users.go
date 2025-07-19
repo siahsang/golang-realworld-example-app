@@ -74,6 +74,39 @@ func (c *Core) GetByEmail(email string) (*auth.User, error) {
 	return &user, nil
 }
 
+func (c *Core) GetByUsername(username string) (*auth.User, error) {
+	query := `
+		SELECT id, email, username, password, bio, image
+		FROM users
+		WHERE username = $1
+	`
+
+	var user auth.User
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := c.db.QueryRowContext(ctx, query, username).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Username,
+		&user.Password,
+		&user.Bio,
+		&user.Image,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, xerrors.New(NoRecordFound)
+		default:
+			return nil, xerrors.New(err)
+		}
+	}
+
+	return &user, nil
+}
+
 func (c *Core) Update(user *auth.User) (*auth.User, error) {
 	query := `
 		UPDATE users

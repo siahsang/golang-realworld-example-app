@@ -16,6 +16,7 @@ func (app *application) routes() http.Handler {
 	// Require authentication for these routes
 	router.HandlerFunc(http.MethodPut, "/api/user", app.requireAuthenticatedUser(app.updateUser))
 	router.HandlerFunc(http.MethodGet, "/api/user", app.requireAuthenticatedUser(app.getUser))
+	router.Handler(http.MethodPost, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.followUser))
 
 	return app.authenticate(router)
 }
