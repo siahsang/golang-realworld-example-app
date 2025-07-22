@@ -242,6 +242,41 @@ func (app *application) followUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (app *application) unfollowUser(w http.ResponseWriter, r *http.Request) {
+	parms := httprouter.ParamsFromContext(r.Context())
+	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
+
+	followeeUsername := strings.TrimSpace(parms.ByName("followee"))
+	v := validator.New()
+	v.CheckNotBlank(followeeUsername, "followee", "must be provided")
+
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, &AppError{
+			ErrorMessage: "Followee username must be provided",
+		})
+		return
+	}
+
+	profile, err := app.core.UnfollowUser(*authenticatedUser, followeeUsername)
+	if err != nil {
+		switch {
+		case errors.Is(err, core.UserIsNotFollowed):
+			app.badRequestResponse(w, r, &AppError{
+				ErrorMessage: err.Error(),
+				ErrorStack:   err,
+			})
+			return
+		default:
+			app.internalErrorResponse(w, r, err)
+			return
+		}
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, envelope{"profile": profile}, nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+	}
+}
+
 func userResponse(user *auth.User) envelope {
 	return envelope{"user": user}
 }

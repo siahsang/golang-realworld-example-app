@@ -12,7 +12,7 @@ import (
 var (
 	ErrDuplicateEmail    = xerrors.Message("Duplicate email")
 	ErrDuplicateUsername = xerrors.Message("Duplicate username")
-	NoRecordFound        = xerrors.Message("User not found")
+	NoRecordFound        = xerrors.Message("No record found")
 )
 
 func (c *Core) Insert(user *auth.User) error {

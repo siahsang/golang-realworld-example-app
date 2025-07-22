@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-var UserIsAlreadyFollowed = xerrors.Message("User is already followed")
+var (
+	UserIsAlreadyFollowed = xerrors.Message("User is already followed")
+	UserIsNotFollowed     = xerrors.Message("User is not followed")
+)
 
 // todo: use one sql query to fetch user and following status
 func (c *Core) GetProfile(username string) (*models.Profile, error) {
@@ -71,6 +74,42 @@ func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*mod
 		default:
 			return nil, xerrors.New(err)
 		}
+	}
+
+	profile, err := c.GetProfile(followerUser.Username)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return profile, nil
+}
+
+func (c *Core) UnfollowUser(followerUser auth.User, followeeUserName string) (*models.Profile, error) {
+	followeeUser, err := c.GetByUsername(followeeUserName)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	deleteSql := `
+		DELETE FROM followers
+		WHERE user_id = $1 AND follower_id = $2
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := c.db.ExecContext(ctx, deleteSql, followeeUser.ID, followerUser.ID)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+	affected, err := result.RowsAffected()
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	if affected == 0 {
+		return nil, xerrors.New(UserIsNotFollowed)
 	}
 
 	profile, err := c.GetProfile(followerUser.Username)
