@@ -28,7 +28,7 @@ func (c *Core) GetProfile(username string) (*models.Profile, error) {
 
 	// Fetch user info
 	profile := &models.Profile{}
-	user, err := c.GetByUsername(username)
+	user, err := c.GetUserByUsername(username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -49,7 +49,7 @@ func (c *Core) GetProfile(username string) (*models.Profile, error) {
 
 func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*models.Profile, error) {
 
-	followeeUser, err := c.GetByUsername(followeeUserName)
+	followeeUser, err := c.GetUserByUsername(followeeUserName)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -85,7 +85,7 @@ func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*mod
 }
 
 func (c *Core) UnfollowUser(followerUser auth.User, followeeUserName string) (*models.Profile, error) {
-	followeeUser, err := c.GetByUsername(followeeUserName)
+	followeeUser, err := c.GetUserByUsername(followeeUserName)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

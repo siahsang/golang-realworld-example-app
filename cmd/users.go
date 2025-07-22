@@ -67,7 +67,7 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := app.core.Insert(user)
+	err := app.core.CreateNewUser(user)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.ErrDuplicateUsername):
@@ -139,7 +139,7 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authenticatedUser.Email = strings.TrimSpace(updateUserRequest.Email)
-	updateUser, err := app.core.Update(authenticatedUser)
+	updateUser, err := app.core.UpdateUser(authenticatedUser)
 	updateUser.Token = authenticatedUser.Token
 
 	if err != nil {

@@ -15,7 +15,7 @@ var (
 	NoRecordFound        = xerrors.Message("No record found")
 )
 
-func (c *Core) Insert(user *auth.User) error {
+func (c *Core) CreateNewUser(user *auth.User) error {
 	query := `
 		INSERT INTO users (username, email, password)
 		VALUES ($1, $2, $3)
@@ -41,7 +41,7 @@ func (c *Core) Insert(user *auth.User) error {
 	return nil
 }
 
-func (c *Core) GetByEmail(email string) (*auth.User, error) {
+func (c *Core) GetUserByEmail(email string) (*auth.User, error) {
 	query := `
 		SELECT id, email, username, password, bio, image
 		FROM users
@@ -74,7 +74,7 @@ func (c *Core) GetByEmail(email string) (*auth.User, error) {
 	return &user, nil
 }
 
-func (c *Core) GetByUsername(username string) (*auth.User, error) {
+func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
 	query := `
 		SELECT id, email, username, password, bio, image
 		FROM users
@@ -107,7 +107,7 @@ func (c *Core) GetByUsername(username string) (*auth.User, error) {
 	return &user, nil
 }
 
-func (c *Core) Update(user *auth.User) (*auth.User, error) {
+func (c *Core) UpdateUser(user *auth.User) (*auth.User, error) {
 	query := `
 		UPDATE users
 		SET bio = $1,image= $2

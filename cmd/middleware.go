@@ -26,7 +26,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 				return
 			}
 
-			user, err := app.core.GetByEmail(authenticate.Email)
+			user, err := app.core.GetUserByEmail(authenticate.Email)
 			if err != nil {
 				if errors.Is(err, core.NoRecordFound) {
 					app.notFoundResponse(w, r)
