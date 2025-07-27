@@ -7,34 +7,24 @@ import (
 	"time"
 )
 
-func (c *Core) CreateArticle(username string) (*models.Profile, error) {
+func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 
-	const queryFollowing = `
-		SELECT EXISTS (
-			SELECT 1 FROM followers WHERE follower_id = $1
-		)
+	const insertSQL = `
+		INSERT INTO article (slug,title,description,body,created_at,updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id,slug,title,description,body,created_at,updated_at
 	`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Fetch user info
-	profile := &models.Profile{}
-	user, err := c.GetUserByUsername(username)
+	modelArticle := &models.Article{}
+
+	err := c.db.QueryRowContext(ctx, insertSQL, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now()).
+		Scan(&modelArticle.ID, &modelArticle.Slug, &modelArticle.Title, &modelArticle.Description, &modelArticle.Body, &modelArticle.CreatedAt, &modelArticle.UpdatedAt)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
 
-	profile.ID = user.ID
-	profile.Username = user.Username
-	profile.Bio = user.Bio
-	profile.Image = user.Image
-
-	// Check following status
-	err = c.db.QueryRowContext(ctx, queryFollowing, profile.ID).Scan(&profile.Following)
-	if err != nil {
-		return nil, xerrors.New(err)
-	}
-
-	return profile, nil
+	return modelArticle, nil
 }

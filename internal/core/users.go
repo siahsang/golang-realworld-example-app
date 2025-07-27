@@ -30,9 +30,9 @@ func (c *Core) CreateNewUser(user *auth.User) error {
 	if err != nil {
 		switch {
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
-			return ErrDuplicateEmail
+			return xerrors.New(ErrDuplicateEmail)
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"`:
-			return ErrDuplicateUsername
+			return xerrors.New(ErrDuplicateUsername)
 		default:
 			return xerrors.New(err)
 		}
