@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/models"
+	"log/slog"
 	"strings"
 	"time"
-)
-
-var (
-	ErrTagAlreadyExists = xerrors.New("Tag already exists")
 )
 
 func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
@@ -55,7 +52,12 @@ func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
 		return nil, xerrors.New(err)
 	}
 
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log the close error, but it might not be the primary error.
+			c.log.Error("failed to close rows", slog.String("error", err.Error()))
+		}
+	}()
 
 	// Use a map to efficiently store and retrieve the returned tags by name.
 	// This helps correctly match the returned IDs to the original input tags,

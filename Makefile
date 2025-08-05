@@ -46,7 +46,7 @@ db/migrations/down:
 
 db/truncate:
 	@echo 'Truncating all tables...'
-	psql ${DB_DSN} -c "TRUNCATE TABLE users, movies, rentals, notifications, sessions, tokens, user_roles, roles RESTART IDENTITY CASCADE"
+	psql ${DB_DSN} -c "TRUNCATE TABLE users, articles, followers RESTART IDENTITY CASCADE"
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #

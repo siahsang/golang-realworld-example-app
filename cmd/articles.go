@@ -49,7 +49,11 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			tagModels = append(tagModels, &models.Tag{Name: strings.TrimSpace(tag)})
 		}
 
-		app.core.CreateTag(tagModels)
+		_, err := app.core.CreateTag(tagModels)
+		if err != nil {
+			app.internalErrorResponse(w, r, err)
+			return
+		}
 	}
 
 	article, err := app.core.CreateArticle(&models.Article{
