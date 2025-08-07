@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
+
 func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 
 	const insertSQL = `
@@ -24,9 +26,13 @@ func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 	err := c.db.QueryRowContext(ctx, insertSQL, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now()).
 		Scan(&modelArticle.ID, &modelArticle.Slug, &modelArticle.Title, &modelArticle.Description, &modelArticle.Body, &modelArticle.CreatedAt, &modelArticle.UpdatedAt)
 	if err != nil {
-		return nil, xerrors.New(err)
+		switch {
+		case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
+			return nil, xerrors.New(ErrDuplicatedSlug)
+		default:
+			return nil, xerrors.New(err)
+		}
 	}
-
 	return modelArticle, nil
 }
 

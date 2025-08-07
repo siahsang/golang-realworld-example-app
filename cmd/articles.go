@@ -1,12 +1,16 @@
 package main
 
 import (
+	"errors"
+	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
 	"net/http"
 	"strings"
+	"time"
 )
 
+// todo: creating article and tags should be implemented in the same transaction
 func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 	type input struct {
 		Title       string    `json:"title"`
@@ -39,6 +43,7 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var createdTags []*models.Tag
 	if requestPayload.TagList != nil && len(*requestPayload.TagList) > 0 {
 		for _, tag := range *requestPayload.TagList {
 			v.CheckNotBlank(tag, "tag", "must be provided")
@@ -53,31 +58,71 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			tagModels = append(tagModels, &models.Tag{Name: strings.TrimSpace(tag)})
 		}
 
-		_, err := app.core.CreateTag(tagModels)
+		tags, err := app.core.CreateTag(tagModels)
 		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrDuplicatedSlug):
+				app.internalErrorResponse(w, r, err)
+				return
+			default:
+				app.internalErrorResponse(w, r, err)
+				return
+			}
+		}
+		createdTags = tags
+		slug := app.core.CreateSlug(requestPayload.Title)
+		article, err := app.core.CreateArticle(&models.Article{
+			Title:       requestPayload.Title,
+			Description: requestPayload.Description,
+			Body:        requestPayload.Body,
+			Slug:        slug,
+		})
+
+		if err != nil {
+			switch {
+			case errors.Is(err, core.ErrDuplicatedSlug):
+				v.AddError("slug", "Slug already exists")
+				app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors, ErrorStack: err})
+				return
+			default:
+				app.internalErrorResponse(w, r, err)
+				return
+			}
+		}
+
+		if err := app.writeJSON(w, http.StatusAccepted, articleResponse(article, createdTags), nil); err != nil {
 			app.internalErrorResponse(w, r, err)
-			return
 		}
 	}
-
-	slug := app.core.CreateSlug(requestPayload.Title)
-	article, err := app.core.CreateArticle(&models.Article{
-		Title:       requestPayload.Title,
-		Description: requestPayload.Description,
-		Body:        requestPayload.Body,
-		Slug:        slug,
-	})
-
-	if err != nil {
-		app.internalErrorResponse(w, r, err)
-		return
-	}
-
-	articleResponse(article)
 }
 
-func articleResponse(article *models.Article) envelope {
+func articleResponse(article *models.Article, createdTags []*models.Tag) envelope {
+	type output struct {
+		Slug        string    `json:"slug"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		Body        string    `json:"body"`
+		TagList     []string  `json:"tagList"`
+		CreatedAt   time.Time `json:"createdAt"`
+		UpdatedAt   time.Time `json:"updatedAt"`
+	}
+
+	tagsList := make([]string, len(createdTags))
+	for i, tag := range createdTags {
+		tagsList[i] = tag.Name
+	}
+
+	articleEnvelop := &output{
+		Slug:        article.Slug,
+		Title:       article.Title,
+		Description: article.Description,
+		Body:        article.Body,
+		TagList:     tagsList,
+		CreatedAt:   article.CreatedAt,
+		UpdatedAt:   article.UpdatedAt,
+	}
+
 	return envelope{
-		"article": article,
+		"article": articleEnvelop,
 	}
 }
