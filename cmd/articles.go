@@ -15,7 +15,11 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 		TagList     *[]string `json:"tagList"`
 	}
 
-	var requestPayload input
+	type CreateArticleRequest struct {
+		input `json:"article"`
+	}
+
+	var requestPayload CreateArticleRequest
 
 	if err := app.readJSON(w, r, &requestPayload); err != nil {
 		app.badRequestResponse(w, r, &AppError{
@@ -56,10 +60,12 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	slug := app.core.CreateSlug(requestPayload.Title)
 	article, err := app.core.CreateArticle(&models.Article{
 		Title:       requestPayload.Title,
 		Description: requestPayload.Description,
 		Body:        requestPayload.Body,
+		Slug:        slug,
 	})
 
 	if err != nil {
@@ -67,6 +73,7 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	articleResponse(article)
 }
 
 func articleResponse(article *models.Article) envelope {

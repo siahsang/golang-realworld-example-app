@@ -4,14 +4,15 @@ import (
 	"context"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/models"
+	"strings"
 	"time"
 )
 
 func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 
 	const insertSQL = `
-		INSERT INTO article (slug,title,description,body,created_at,updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO articles (slug,title,description,body,created_at,updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id,slug,title,description,body,created_at,updated_at
 	`
 
@@ -27,4 +28,24 @@ func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 	}
 
 	return modelArticle, nil
+}
+
+func (c *Core) CreateSlug(title string) string {
+	slug := strings.ToLower(title)
+
+	slug = strings.ReplaceAll(slug, " ", "-")
+	// Remove common punctuation
+	replacements := []string{".", ",", "!", "?", ":", ";", "'", "\"", "(", ")", "[", "]", "{", "}", "/", "\\"}
+	for _, char := range replacements {
+		slug = strings.ReplaceAll(slug, char, "")
+	}
+
+	// Replace multiple consecutive hyphens with single hyphen
+	for strings.Contains(slug, "--") {
+		slug = strings.ReplaceAll(slug, "--", "-")
+	}
+
+	slug = strings.Trim(slug, "-")
+
+	return slug
 }

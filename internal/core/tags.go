@@ -39,7 +39,6 @@ func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
 	valueCluses := strings.Join(valueString, ", ")
 
 	// Construct the full SQL statement.
-
 	insertSQL := fmt.Sprintf(`
 			INSERT INTO tags (name)
 		  	VALUES %s	

@@ -18,6 +18,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/api/user", app.requireAuthenticatedUser(app.getUser))
 	router.Handler(http.MethodPost, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.followUser))
 	router.Handler(http.MethodDelete, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.unfollowUser))
+	router.Handler(http.MethodPost, "/api/articles", app.requireAuthenticatedUser(app.createArticle))
 
 	return app.authenticate(router)
 }
