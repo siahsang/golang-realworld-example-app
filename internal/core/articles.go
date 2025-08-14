@@ -2,7 +2,10 @@ package core
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/models"
 	"strings"
 	"time"
@@ -34,6 +37,48 @@ func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 		}
 	}
 	return modelArticle, nil
+}
+
+func (c *Core) IsFavouriteArticleByUser(articleId int64, user *auth.User) (bool, error) {
+	if user == nil {
+		return false, nil
+	}
+
+	const selectSQL = `
+		SELECT EXISTS( 
+			SELECT 1 FROM favourite_articles WHERE user_id = $1 and article_id = $2
+		)
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var isFavourite bool
+	err := c.db.QueryRowContext(ctx, selectSQL, user.ID, articleId).Scan(&isFavourite)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil // No record found, not a favourite
+		}
+		return false, xerrors.New(err)
+	}
+	return isFavourite, nil
+}
+
+func (c *Core) FavouriteArticleCount(articleId int64) (int64, error) {
+	const selectSQL = `
+		SELECT COUNT(*) FROM favourite_articles WHERE article_id = $1
+	`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var favouriteArticleCount int64
+	err := c.db.QueryRowContext(ctx, selectSQL, articleId).Scan(&favouriteArticleCount)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, xerrors.New(err)
+	}
+	return favouriteArticleCount, nil
 }
 
 func (c *Core) CreateSlug(title string) string {

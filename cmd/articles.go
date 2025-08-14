@@ -90,36 +90,46 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if err := app.writeJSON(w, http.StatusAccepted, articleResponse(article, createdTags), nil); err != nil {
+		user, err := app.auth.GetAuthenticatedUser(r)
+		isFavorited, _ := app.core.IsFavouriteArticleByUser(article.ID, user)
+		favouriteArticleCount, err := app.core.FavouriteArticleCount(article.ID)
+		if err != nil {
+			app.internalErrorResponse(w, r, err)
+			return
+		}
+		if err := app.writeJSON(w, http.StatusAccepted, articleResponse(article, createdTags, isFavorited, favouriteArticleCount), nil); err != nil {
 			app.internalErrorResponse(w, r, err)
 		}
 	}
 }
 
-func articleResponse(article *models.Article, createdTags []*models.Tag) envelope {
+func articleResponse(article *models.Article, createdTags []*models.Tag, isFavorited bool, FavoritesCount int64) envelope {
 	type output struct {
-		Slug        string    `json:"slug"`
-		Title       string    `json:"title"`
-		Description string    `json:"description"`
-		Body        string    `json:"body"`
-		TagList     []string  `json:"tagList"`
-		CreatedAt   time.Time `json:"createdAt"`
-		UpdatedAt   time.Time `json:"updatedAt"`
+		Slug           string    `json:"slug"`
+		Title          string    `json:"title"`
+		Description    string    `json:"description"`
+		Body           string    `json:"body"`
+		TagList        []string  `json:"tagList"`
+		CreatedAt      time.Time `json:"createdAt"`
+		UpdatedAt      time.Time `json:"updatedAt"`
+		Favorited      bool      `json:"favorited"`
+		FavoritesCount int64     `json:"favoritesCount"`
 	}
 
 	tagsList := make([]string, len(createdTags))
 	for i, tag := range createdTags {
 		tagsList[i] = tag.Name
 	}
-
 	articleEnvelop := &output{
-		Slug:        article.Slug,
-		Title:       article.Title,
-		Description: article.Description,
-		Body:        article.Body,
-		TagList:     tagsList,
-		CreatedAt:   article.CreatedAt,
-		UpdatedAt:   article.UpdatedAt,
+		Slug:           article.Slug,
+		Title:          article.Title,
+		Description:    article.Description,
+		Body:           article.Body,
+		TagList:        tagsList,
+		CreatedAt:      article.CreatedAt,
+		UpdatedAt:      article.UpdatedAt,
+		Favorited:      isFavorited,
+		FavoritesCount: FavoritesCount,
 	}
 
 	return envelope{
