@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/filter"
 	"github.com/siahsang/blog/internal/utils"
@@ -164,7 +166,7 @@ func articleResponse(article *models.Article, createdTags []*models.Tag, isFavor
 	}
 }
 
-func prepareMultiArticleResponse(articles []*models.Article, app *application) (envelope, error) {
+func prepareMultiArticleResponse(articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
 	type output struct {
 		Slug           string    `json:"slug"`
 		Title          string    `json:"title"`
@@ -185,15 +187,21 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application) (
 		return nil, err
 	}
 
+	favouriteArticleByArticleId, err := app.core.FavouriteArticleByArticleId(articlesIdList, currentLoginUser)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
 	var articlesEnvelop []output
 	for _, article := range articles {
-		tagsList := tagsByArticleId[article.AuthorID]
+		tagsList := utils.GetOrDefault(tagsByArticleId, article.AuthorID, []models.Tag{})
+		tagNameList := utils.Map(tagsList, func(t models.Tag) string { return t.Name })
+		isFavorited := favouriteArticleByArticleId[article.ID]
 		a := output{
 			Slug:           article.Slug,
 			Title:          article.Title,
 			Description:    article.Description,
-			Body:           article.Body,
-			TagList:        tagsList,
+			TagList:        tagNameList,
 			CreatedAt:      article.CreatedAt,
 			UpdatedAt:      article.UpdatedAt,
 			Favorited:      isFavorited,

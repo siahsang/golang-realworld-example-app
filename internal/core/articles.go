@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/filter"
+	"github.com/siahsang/blog/internal/utils/database"
+	"github.com/siahsang/blog/internal/utils/stringutils"
 	"github.com/siahsang/blog/models"
 	"strings"
 	"time"
@@ -63,6 +66,69 @@ func (c *Core) IsFavouriteArticleByUser(articleId int64, user *auth.User) (bool,
 		return false, xerrors.New(err)
 	}
 	return isFavourite, nil
+}
+
+func (c *Core) FavouriteArticleByArticleId(articleIdList []int64, user *auth.User) (map[int64]bool, error) {
+	result := map[int64]bool{}
+	for _, articleId := range articleIdList {
+		result[articleId] = false
+	}
+	if user == nil {
+		return result, nil
+	}
+
+	placeholders, args := stringutils.INCluse(articleIdList)
+	selectSQL := fmt.Sprintf(`
+		SELECT article_id FROM favourite_articles WHERE user_id = $1 and article_id in (%s)
+	`, strings.Join(placeholders, ","))
+
+	queryResult, err := database.ExecuteQuery(c.sqlTemplate, selectSQL, func(rows *sql.Rows) (int64, error) {
+		var articleId int64
+		if err := rows.Scan(&articleId); err != nil {
+			return 0, xerrors.New(err)
+		}
+		return articleId, nil
+	}, args...)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	for _, articleId := range queryResult {
+		result[articleId] = true
+	}
+
+	return result, nil
+}
+
+func (c *Core) FavouriteCountByArticleId(articleIdList []int64) (map[int64]int, error) {
+	result := map[int64]int{}
+	for _, articleId := range articleIdList {
+		result[articleId] = 0
+	}
+
+	placeholders, args := stringutils.INCluse(articleIdList)
+	selectSQL := fmt.Sprintf(`
+		SELECT article_id FROM favourite_articles WHERE user_id = $1 and article_id in (%s)
+	`, strings.Join(placeholders, ","))
+
+	queryResult, err := database.ExecuteQuery(c.sqlTemplate, selectSQL, func(rows *sql.Rows) (int64, error) {
+		var articleId int64
+		if err := rows.Scan(&articleId); err != nil {
+			return 0, xerrors.New(err)
+		}
+		return articleId, nil
+	}, args...)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	for _, articleId := range queryResult {
+		result[articleId] = true
+	}
+
+	return result, nil
 }
 
 func (c *Core) FavouriteArticleCount(articleId int64) (int64, error) {

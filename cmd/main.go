@@ -41,7 +41,7 @@ func main() {
 
 	app := application{
 		auth:   auth.New(),
-		core:   core.NewDB(db, logger),
+		core:   core.NewDB(db, logger, 3*time.Second),
 		logger: logger,
 		wg:     sync.WaitGroup{},
 	}
