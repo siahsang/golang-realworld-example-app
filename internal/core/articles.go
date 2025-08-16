@@ -101,31 +101,40 @@ func (c *Core) FavouriteArticleByArticleId(articleIdList []int64, user *auth.Use
 	return result, nil
 }
 
-func (c *Core) FavouriteCountByArticleId(articleIdList []int64) (map[int64]int, error) {
-	result := map[int64]int{}
+func (c *Core) FavouriteCountByArticleId(articleIdList []int64) (map[int64]int64, error) {
+	result := map[int64]int64{}
 	for _, articleId := range articleIdList {
 		result[articleId] = 0
 	}
 
 	placeholders, args := stringutils.INCluse(articleIdList)
 	selectSQL := fmt.Sprintf(`
-		SELECT article_id FROM favourite_articles WHERE user_id = $1 and article_id in (%s)
+		SELECT COUNT(*) as count, article_id
+		FROM favourite_articles		
+		WHERE article_id IN (%s)
+		GROUP BY article_id
 	`, strings.Join(placeholders, ","))
 
-	queryResult, err := database.ExecuteQuery(c.sqlTemplate, selectSQL, func(rows *sql.Rows) (int64, error) {
-		var articleId int64
-		if err := rows.Scan(&articleId); err != nil {
-			return 0, xerrors.New(err)
+	type QueryResult struct {
+		ArticleId int64
+		Count     int64
+	}
+
+	queryResultList, err := database.ExecuteQuery(c.sqlTemplate, selectSQL, func(rows *sql.Rows) (*QueryResult, error) {
+		var queryResult *QueryResult
+
+		if err := rows.Scan(&queryResult.ArticleId, &queryResult.Count); err != nil {
+			return nil, xerrors.New(err)
 		}
-		return articleId, nil
+		return queryResult, nil
 	}, args...)
 
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
 
-	for _, articleId := range queryResult {
-		result[articleId] = true
+	for _, q := range queryResultList {
+		result[q.ArticleId] = q.Count
 	}
 
 	return result, nil

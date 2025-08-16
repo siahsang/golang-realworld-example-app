@@ -167,15 +167,23 @@ func articleResponse(article *models.Article, createdTags []*models.Tag, isFavor
 }
 
 func prepareMultiArticleResponse(articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
-	type output struct {
-		Slug           string    `json:"slug"`
-		Title          string    `json:"title"`
-		Description    string    `json:"description"`
-		TagList        []string  `json:"tagList"`
-		CreatedAt      time.Time `json:"createdAt"`
-		UpdatedAt      time.Time `json:"updatedAt"`
-		Favorited      bool      `json:"favorited"`
-		FavoritesCount int64     `json:"favoritesCount"`
+	type authorJSON struct {
+		Username  string `json:"username"`
+		Bio       string `json:"bio"`
+		Image     string `json:"image"`
+		Following bool   `json:"following"`
+	}
+
+	type articleJSON struct {
+		Slug           string     `json:"slug"`
+		Title          string     `json:"title"`
+		Description    string     `json:"description"`
+		TagList        []string   `json:"tagList"`
+		CreatedAt      time.Time  `json:"createdAt"`
+		UpdatedAt      time.Time  `json:"updatedAt"`
+		Favorited      bool       `json:"favorited"`
+		FavoritesCount int64      `json:"favoritesCount"`
+		Author         authorJSON `json:"author"`
 	}
 
 	articlesIdList := utils.Map(articles, func(a *models.Article) int64 {
@@ -191,13 +199,16 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
+	favouriteCountByArticleId, err := app.core.FavouriteCountByArticleId(articlesIdList)
 
-	var articlesEnvelop []output
+	var articlesEnvelop []article
 	for _, article := range articles {
 		tagsList := utils.GetOrDefault(tagsByArticleId, article.AuthorID, []models.Tag{})
 		tagNameList := utils.Map(tagsList, func(t models.Tag) string { return t.Name })
 		isFavorited := favouriteArticleByArticleId[article.ID]
-		a := output{
+		favoritesCount := favouriteCountByArticleId[article.ID]
+		app.core.GetUserByUsername()
+		a := articleJSON{
 			Slug:           article.Slug,
 			Title:          article.Title,
 			Description:    article.Description,
@@ -205,7 +216,7 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 			CreatedAt:      article.CreatedAt,
 			UpdatedAt:      article.UpdatedAt,
 			Favorited:      isFavorited,
-			FavoritesCount: FavoritesCount,
+			FavoritesCount: favoritesCount,
 		}
 		articlesEnvelop = append(articlesEnvelop, a)
 	}

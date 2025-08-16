@@ -4,8 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
+	"github.com/siahsang/blog/internal/utils/database"
+	"github.com/siahsang/blog/internal/utils/stringutils"
+	"strings"
 	"time"
 )
 
@@ -105,6 +109,35 @@ func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
 	}
 
 	return &user, nil
+}
+
+func (c *Core) GetUsersByIdList(userIdList []int64) ([]*auth.User, error) {
+	placeholders, args := stringutils.INCluse(userIdList)
+	query := fmt.Sprintf(`
+		SELECT id, email, username, password, bio, image
+		FROM users
+		WHERE id  in (%s)
+	`, strings.Join(placeholders, ", "))
+
+	queryResultList, err := database.ExecuteQuery(c.sqlTemplate, query, func(rows *sql.Rows) (*auth.User, error) {
+		var user *auth.User
+
+		if err := rows.Scan(&user.ID,
+			&user.Email,
+			&user.Username,
+			&user.Password,
+			&user.Bio,
+			&user.Image); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return user, nil
+	}, args...)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return queryResultList, nil
 }
 
 func (c *Core) UpdateUser(user *auth.User) (*auth.User, error) {

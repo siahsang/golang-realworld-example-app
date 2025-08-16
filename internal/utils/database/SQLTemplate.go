@@ -11,6 +11,13 @@ type SQLTemplate struct {
 	Timeout time.Duration
 }
 
+func NewSQLTemplate(db *sql.DB, timeout time.Duration) *SQLTemplate {
+	return &SQLTemplate{
+		DB:      db,
+		Timeout: timeout,
+	}
+}
+
 func ExecuteQuery[T any](sqlTemplate *SQLTemplate, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), sqlTemplate.Timeout)
 	defer cancel()
