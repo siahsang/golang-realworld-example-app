@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS articles
     description TEXT        NOT NULL,
     body        TEXT        NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    author_id   INTEGER     NOT NULL REFERENCES users (id) ON DELETE CASCADE
 );

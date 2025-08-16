@@ -95,3 +95,51 @@ func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
 	return resultTags, nil
 
 }
+
+func (c *Core) GetTagsByArticleId(articleIdList []int64) (map[int64][]models.Tag, error) {
+	if len(articleIdList) == 0 {
+		return make(map[int64][]models.Tag), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Build the placeholders for the IN clause
+	placeholders := make([]string, len(articleIdList))
+	args := make([]any, len(articleIdList))
+	for i, id := range articleIdList {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT at.article_id, t.id, t.name
+		FROM articles_tags at
+		JOIN tags t ON at.tag_id = t.id
+		WHERE at.article_id IN (%s)
+	`, strings.Join(placeholders, ", "))
+
+	rows, err := c.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, xerrors.Newf("failed to query tags by article ids: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[int64][]models.Tag)
+	for rows.Next() {
+		var articleID, tagID int64
+		var tagName string
+		if err := rows.Scan(&articleID, &tagID, &tagName); err != nil {
+			return nil, xerrors.Newf("failed to scan row: %w", err)
+		}
+		result[articleID] = append(result[articleID], models.Tag{
+			ID:   tagID,
+			Name: tagName,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, xerrors.Newf("row iteration error: %w", err)
+	}
+
+	return result, nil
+}

@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/validator"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 )
 
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
@@ -92,4 +95,29 @@ func (app *application) doInBackground(fn func()) {
 		}()
 		fn()
 	}()
+}
+
+func (app *application) readInt(qs url.Values, key string, defaultValue int64, v *validator.Validator) int64 {
+	qValue := qs.Get(key)
+
+	if qValue == "" {
+		return defaultValue
+	}
+
+	int64Value, err := strconv.ParseInt(qValue, 10, 64)
+	if err != nil {
+		v.AddError(key, fmt.Sprintf("must be a valid integer: %s", qValue))
+		return defaultValue
+	}
+
+	return int64Value
+}
+
+func (app *application) readString(qs url.Values, key string, defaultValue string) string {
+	qValue := qs.Get(key)
+	if qValue == "" {
+		return defaultValue
+	}
+
+	return qValue
 }

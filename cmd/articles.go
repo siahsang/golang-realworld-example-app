@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/filter"
+	"github.com/siahsang/blog/internal/utils"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
 	"net/http"
@@ -69,6 +71,7 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		user, _ := app.auth.GetAuthenticatedUser(r)
 		createdTags = tags
 		slug := app.core.CreateSlug(requestPayload.Title)
 		article, err := app.core.CreateArticle(&models.Article{
@@ -76,6 +79,7 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			Description: requestPayload.Description,
 			Body:        requestPayload.Body,
 			Slug:        slug,
+			AuthorID:    user.ID,
 		})
 
 		if err != nil {
@@ -90,7 +94,6 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		user, err := app.auth.GetAuthenticatedUser(r)
 		isFavorited, _ := app.core.IsFavouriteArticleByUser(article.ID, user)
 		favouriteArticleCount, err := app.core.FavouriteArticleCount(article.ID)
 		if err != nil {
@@ -101,6 +104,30 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			app.internalErrorResponse(w, r, err)
 		}
 	}
+}
+
+func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
+	validator := validator.New()
+	query := r.URL.Query()
+	tagQ := app.readString(query, "tag", "")
+	authorQ := app.readString(query, "author", "")
+	favoritedQ := app.readString(query, "favorited", "")
+
+	limit := app.readInt(query, "limit", 20, validator)
+	offset := app.readInt(query, "offset", 0, validator)
+
+	filters := filter.NewFilter(limit, offset)
+	if err := filter.ValidateFilters(filters); err != nil {
+		app.badRequestResponse(w, r, &AppError{ErrorDetails: err.Errors})
+		return
+	}
+
+	articles, err := app.core.GetArticles(filters, tagQ, authorQ, favoritedQ)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
 }
 
 func articleResponse(article *models.Article, createdTags []*models.Tag, isFavorited bool, FavoritesCount int64) envelope {
@@ -134,5 +161,48 @@ func articleResponse(article *models.Article, createdTags []*models.Tag, isFavor
 
 	return envelope{
 		"article": articleEnvelop,
+	}
+}
+
+func prepareMultiArticleResponse(articles []*models.Article, app *application) (envelope, error) {
+	type output struct {
+		Slug           string    `json:"slug"`
+		Title          string    `json:"title"`
+		Description    string    `json:"description"`
+		TagList        []string  `json:"tagList"`
+		CreatedAt      time.Time `json:"createdAt"`
+		UpdatedAt      time.Time `json:"updatedAt"`
+		Favorited      bool      `json:"favorited"`
+		FavoritesCount int64     `json:"favoritesCount"`
+	}
+
+	articlesIdList := utils.Map(articles, func(a *models.Article) int64 {
+		return a.ID
+	})
+
+	tagsByArticleId, err := app.core.GetTagsByArticleId(articlesIdList)
+	if err != nil {
+		return nil, err
+	}
+
+	var articlesEnvelop []output
+	for _, article := range articles {
+		tagsList := tagsByArticleId[article.AuthorID]
+		a := output{
+			Slug:           article.Slug,
+			Title:          article.Title,
+			Description:    article.Description,
+			Body:           article.Body,
+			TagList:        tagsList,
+			CreatedAt:      article.CreatedAt,
+			UpdatedAt:      article.UpdatedAt,
+			Favorited:      isFavorited,
+			FavoritesCount: FavoritesCount,
+		}
+		articlesEnvelop = append(articlesEnvelop, a)
+	}
+
+	return envelope{
+		"articles": articlesEnvelop,
 	}
 }

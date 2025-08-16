@@ -18,6 +18,7 @@ type Article struct {
 	Body        string    `json:"body"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
+	AuthorID    int64     `json:"-"`
 }
 
 type Tag struct {
