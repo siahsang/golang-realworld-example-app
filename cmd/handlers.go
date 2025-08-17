@@ -12,6 +12,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/api/users", app.createUser)
 	router.HandlerFunc(http.MethodPost, "/api/users/login", app.login)
 	router.GET("/api/profiles/:username", app.getProfile)
+	router.HandlerFunc(http.MethodGet, "/api/articles", app.getArticles)
 
 	// Require authentication for these routes
 	router.HandlerFunc(http.MethodPut, "/api/user", app.requireAuthenticatedUser(app.updateUser))

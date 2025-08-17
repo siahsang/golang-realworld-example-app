@@ -6,7 +6,8 @@ import (
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/filter"
-	"github.com/siahsang/blog/internal/utils"
+	"github.com/siahsang/blog/internal/utils/collectionutils"
+	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
 	"net/http"
@@ -130,6 +131,18 @@ func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, _ := app.auth.GetAuthenticatedUser(r)
+	response, err := prepareMultiArticleResponse(articles, app, user)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
 }
 
 func articleResponse(article *models.Article, createdTags []*models.Tag, isFavorited bool, FavoritesCount int64) envelope {
@@ -167,26 +180,26 @@ func articleResponse(article *models.Article, createdTags []*models.Tag, isFavor
 }
 
 func prepareMultiArticleResponse(articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
-	type authorJSON struct {
-		Username  string `json:"username"`
-		Bio       string `json:"bio"`
-		Image     string `json:"image"`
-		Following bool   `json:"following"`
+	type AuthorEnvelop struct {
+		Username  string  `json:"username"`
+		Bio       *string `json:"bio"`
+		Image     *string `json:"image"`
+		Following bool    `json:"following"`
 	}
 
-	type articleJSON struct {
-		Slug           string     `json:"slug"`
-		Title          string     `json:"title"`
-		Description    string     `json:"description"`
-		TagList        []string   `json:"tagList"`
-		CreatedAt      time.Time  `json:"createdAt"`
-		UpdatedAt      time.Time  `json:"updatedAt"`
-		Favorited      bool       `json:"favorited"`
-		FavoritesCount int64      `json:"favoritesCount"`
-		Author         authorJSON `json:"author"`
+	type ArticleEnvelope struct {
+		Slug           string        `json:"slug"`
+		Title          string        `json:"title"`
+		Description    string        `json:"description"`
+		TagList        []string      `json:"tagList"`
+		CreatedAt      time.Time     `json:"createdAt"`
+		UpdatedAt      time.Time     `json:"updatedAt"`
+		Favorited      bool          `json:"favorited"`
+		FavoritesCount int64         `json:"favoritesCount"`
+		Author         AuthorEnvelop `json:"author"`
 	}
 
-	articlesIdList := utils.Map(articles, func(a *models.Article) int64 {
+	articlesIdList := functional.Map(articles, func(a *models.Article) int64 {
 		return a.ID
 	})
 
@@ -201,14 +214,30 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 	}
 	favouriteCountByArticleId, err := app.core.FavouriteCountByArticleId(articlesIdList)
 
-	var articlesEnvelop []article
+	listOfUser, err := app.core.GetUsersByIdList(articlesIdList)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	userByUserId := collectionutils.Associate(listOfUser, func(user *auth.User) (int64, *auth.User) {
+		return user.ID, user
+	})
+
+	followingUserList, err := app.core.GetFollowingUserList(currentLoginUser.Username)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+	followingUserById := collectionutils.Associate(followingUserList, func(user *auth.User) (int64, bool) {
+		return user.ID, true
+	})
+
+	var articlesEnvelop []ArticleEnvelope
 	for _, article := range articles {
-		tagsList := utils.GetOrDefault(tagsByArticleId, article.AuthorID, []models.Tag{})
-		tagNameList := utils.Map(tagsList, func(t models.Tag) string { return t.Name })
+		tagsList := collectionutils.GetOrDefault(tagsByArticleId, article.AuthorID, []models.Tag{})
+		tagNameList := functional.Map(tagsList, func(t models.Tag) string { return t.Name })
 		isFavorited := favouriteArticleByArticleId[article.ID]
 		favoritesCount := favouriteCountByArticleId[article.ID]
-		app.core.GetUserByUsername()
-		a := articleJSON{
+		a := ArticleEnvelope{
 			Slug:           article.Slug,
 			Title:          article.Title,
 			Description:    article.Description,
@@ -217,11 +246,17 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 			UpdatedAt:      article.UpdatedAt,
 			Favorited:      isFavorited,
 			FavoritesCount: favoritesCount,
+			Author: AuthorEnvelop{
+				Username:  userByUserId[article.AuthorID].Username,
+				Bio:       userByUserId[article.AuthorID].Bio,
+				Image:     userByUserId[article.AuthorID].Image,
+				Following: collectionutils.GetOrDefault(followingUserById, article.AuthorID, false),
+			},
 		}
 		articlesEnvelop = append(articlesEnvelop, a)
 	}
 
 	return envelope{
 		"articles": articlesEnvelop,
-	}
+	}, nil
 }

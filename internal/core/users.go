@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
-	"github.com/siahsang/blog/internal/utils/database"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/stringutils"
 	"strings"
 	"time"
@@ -119,7 +119,7 @@ func (c *Core) GetUsersByIdList(userIdList []int64) ([]*auth.User, error) {
 		WHERE id  in (%s)
 	`, strings.Join(placeholders, ", "))
 
-	queryResultList, err := database.ExecuteQuery(c.sqlTemplate, query, func(rows *sql.Rows) (*auth.User, error) {
+	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, query, func(rows *sql.Rows) (*auth.User, error) {
 		var user *auth.User
 
 		if err := rows.Scan(&user.ID,

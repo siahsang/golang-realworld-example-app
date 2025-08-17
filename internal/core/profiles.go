@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/models"
 	"strings"
 	"time"
@@ -45,6 +47,40 @@ func (c *Core) GetProfile(username string) (*models.Profile, error) {
 	}
 
 	return profile, nil
+}
+
+func (c *Core) GetFollowingUserList(username string) ([]*auth.User, error) {
+	user, err := c.GetUserByUsername(username)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	queryFollowing := `
+		SELECT EXISTS (
+			SELECT u.id, u.email, u.username, u.password, u.bio, u.image 
+			FROM users as u join followers f on u.id = f.user_id  
+			WHERE follower_id = $1
+		)
+	`
+	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
+		var user *auth.User
+
+		if err := rows.Scan(&user.ID,
+			&user.Email,
+			&user.Username,
+			&user.Password,
+			&user.Bio,
+			&user.Image); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return user, nil
+	}, user.ID)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return queryResultList, nil
 }
 
 func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*models.Profile, error) {

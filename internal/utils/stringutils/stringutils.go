@@ -2,7 +2,7 @@ package stringutils
 
 import (
 	"fmt"
-	"github.com/siahsang/blog/internal/utils"
+	"github.com/siahsang/blog/internal/utils/functional"
 	"strconv"
 )
 
@@ -27,7 +27,7 @@ func ToString[T StringNumber](v T) string {
 }
 
 func ToListString[T StringNumber](v []T) []string {
-	return utils.Map(v, func(item T) string { return ToString(item) })
+	return functional.Map(v, func(item T) string { return ToString(item) })
 }
 
 func INCluse[T any](list []T) (placeholders []string, args []any) {
