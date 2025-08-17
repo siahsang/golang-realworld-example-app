@@ -63,17 +63,17 @@ func (c *Core) GetFollowingUserList(username string) ([]*auth.User, error) {
 		)
 	`
 	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
-		var user *auth.User
+		var tempUser = &auth.User{}
 
-		if err := rows.Scan(&user.ID,
-			&user.Email,
-			&user.Username,
-			&user.Password,
-			&user.Bio,
-			&user.Image); err != nil {
+		if err := rows.Scan(&tempUser.ID,
+			&tempUser.Email,
+			&tempUser.Username,
+			&tempUser.Password,
+			&tempUser.Bio,
+			&tempUser.Image); err != nil {
 			return nil, xerrors.New(err)
 		}
-		return user, nil
+		return tempUser, nil
 	}, user.ID)
 
 	if err != nil {

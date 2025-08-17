@@ -112,15 +112,19 @@ func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
 }
 
 func (c *Core) GetUsersByIdList(userIdList []int64) ([]*auth.User, error) {
+	if len(userIdList) == 0 {
+		return []*auth.User{}, nil
+	}
+
 	placeholders, args := stringutils.INCluse(userIdList)
 	query := fmt.Sprintf(`
 		SELECT id, email, username, password, bio, image
 		FROM users
-		WHERE id  in (%s)
+		WHERE id in (%s)
 	`, strings.Join(placeholders, ", "))
 
 	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, query, func(rows *sql.Rows) (*auth.User, error) {
-		var user *auth.User
+		var user *auth.User = &auth.User{}
 
 		if err := rows.Scan(&user.ID,
 			&user.Email,

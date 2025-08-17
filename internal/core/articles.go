@@ -30,7 +30,7 @@ func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 
 	modelArticle := &models.Article{}
 
-	err := c.db.QueryRowContext(ctx, insertSQL, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now()).
+	err := c.db.QueryRowContext(ctx, insertSQL, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now(), article.AuthorID).
 		Scan(&modelArticle.ID, &modelArticle.Slug, &modelArticle.Title, &modelArticle.Description,
 			&modelArticle.Body, &modelArticle.CreatedAt, &modelArticle.UpdatedAt, &modelArticle.AuthorID)
 	if err != nil {
@@ -105,6 +105,10 @@ func (c *Core) FavouriteCountByArticleId(articleIdList []int64) (map[int64]int64
 	result := map[int64]int64{}
 	for _, articleId := range articleIdList {
 		result[articleId] = 0
+	}
+
+	if len(articleIdList) == 0 {
+		return result, nil
 	}
 
 	placeholders, args := stringutils.INCluse(articleIdList)
@@ -198,19 +202,19 @@ func (c *Core) GetArticles(filter filter.Filter, tag, authorUserName, favoritedB
 	argId := 1
 
 	if tag != "" {
-		whereClause = append(whereClause, "t.name = $"+string(rune(argId)))
+		whereClause = append(whereClause, "t.name = $"+fmt.Sprintf("%d", argId))
 		args = append(args, tag)
 		argId++
 	}
 
 	if authorUserName != "" {
-		whereClause = append(whereClause, "u.username = $"+string(rune(argId)))
+		whereClause = append(whereClause, "u.username = $"+fmt.Sprintf("%d", argId))
 		args = append(args, authorUserName)
 		argId++
 	}
 
 	if favoritedById != nil {
-		whereClause = append(whereClause, "fa.user_id = $"+string(rune(argId)))
+		whereClause = append(whereClause, "fa.user_id = $"+fmt.Sprintf("%d", argId))
 		args = append(args, *favoritedById)
 		argId++
 	}
@@ -220,7 +224,7 @@ func (c *Core) GetArticles(filter filter.Filter, tag, authorUserName, favoritedB
 	}
 
 	// add limit and offset
-	selectSQL += "ORDER BY a.created_at DESC LIMIT $" + string(rune(argId)) + " OFFSET $" + string(rune(argId+1))
+	selectSQL += "ORDER BY a.created_at DESC LIMIT $" + fmt.Sprintf("%d", argId) + " OFFSET $" + fmt.Sprintf("%d", argId+1)
 	args = append(args, filter.Limit, filter.Offset)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

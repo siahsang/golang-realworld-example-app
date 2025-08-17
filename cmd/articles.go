@@ -110,18 +110,20 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
-	validator := validator.New()
+	v := validator.New()
 	query := r.URL.Query()
 	tagQ := app.readString(query, "tag", "")
 	authorQ := app.readString(query, "author", "")
 	favoritedQ := app.readString(query, "favorited", "")
 
-	limit := app.readInt(query, "limit", 20, validator)
-	offset := app.readInt(query, "offset", 0, validator)
+	limit := app.readInt(query, "limit", 20, v)
+	offset := app.readInt(query, "offset", 0, v)
 
 	filters := filter.NewFilter(limit, offset)
-	if err := filter.ValidateFilters(filters); err != nil {
-		app.badRequestResponse(w, r, &AppError{ErrorDetails: err.Errors})
+
+	filter.ValidateFilters(filters, v)
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
 		return
 	}
 
@@ -213,8 +215,10 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 		return nil, xerrors.New(err)
 	}
 	favouriteCountByArticleId, err := app.core.FavouriteCountByArticleId(articlesIdList)
-
-	listOfUser, err := app.core.GetUsersByIdList(articlesIdList)
+	userIdList := functional.Map(articles, func(article *models.Article) int64 {
+		return article.AuthorID
+	})
+	listOfUser, err := app.core.GetUsersByIdList(userIdList)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -223,10 +227,14 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 		return user.ID, user
 	})
 
-	followingUserList, err := app.core.GetFollowingUserList(currentLoginUser.Username)
-	if err != nil {
-		return nil, xerrors.New(err)
+	var followingUserList []*auth.User
+	if currentLoginUser != nil {
+		followingUserList, err = app.core.GetFollowingUserList(currentLoginUser.Username)
+		if err != nil {
+			return nil, xerrors.New(err)
+		}
 	}
+
 	followingUserById := collectionutils.Associate(followingUserList, func(user *auth.User) (int64, bool) {
 		return user.ID, true
 	})
