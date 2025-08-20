@@ -21,5 +21,5 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodDelete, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.unfollowUser))
 	router.Handler(http.MethodPost, "/api/articles", app.requireAuthenticatedUser(app.createArticle))
 
-	return app.authenticate(router)
+	return app.recoverPanic(app.authenticate(router))
 }

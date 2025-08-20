@@ -83,7 +83,7 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			Body:        requestPayload.Body,
 			Slug:        slug,
 			AuthorID:    user.ID,
-		})
+		}, createdTags)
 
 		if err != nil {
 			switch {

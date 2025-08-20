@@ -16,23 +16,25 @@ import (
 )
 
 var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
+var ErrDuplicatedArticleTag = xerrors.Message("Duplicate article tag")
 
-func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
+func (c *Core) CreateArticle(article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
 
-	const insertSQL = `
+	insertSQL := `
 		INSERT INTO articles (slug,title,description,body,created_at,updated_at,author_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
+		var article models.Article
+		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return &article, nil
+	}, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now(), article.AuthorID)
 
-	modelArticle := &models.Article{}
-
-	err := c.db.QueryRowContext(ctx, insertSQL, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now(), article.AuthorID).
-		Scan(&modelArticle.ID, &modelArticle.Slug, &modelArticle.Title, &modelArticle.Description,
-			&modelArticle.Body, &modelArticle.CreatedAt, &modelArticle.UpdatedAt, &modelArticle.AuthorID)
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
@@ -41,7 +43,42 @@ func (c *Core) CreateArticle(article *models.Article) (*models.Article, error) {
 			return nil, xerrors.New(err)
 		}
 	}
-	return modelArticle, nil
+	savedTagList, err := c.CreateTag(tagModels)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	for _, tag := range savedTagList {
+		insertSQL := `
+			INSERT INTO articles_tags (article_id, tag_id)
+			VALUES ($1, $2)
+			RETURNING article_id,tag_id
+		`
+
+		type QueryResult struct {
+			ArticleID int64
+			TagID     int64
+		}
+		_, err := databaseutils.ExecuteQuery(c.sqlTemplate, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
+			qr := &QueryResult{}
+			if err := rows.Scan(&qr.ArticleID, &qr.TagID); err != nil {
+				return nil, xerrors.New(err)
+			}
+			return qr, nil
+		}, newArticle[0].ID, tag.ID)
+
+		if err != nil {
+			switch {
+			case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
+				return nil, xerrors.New(ErrDuplicatedArticleTag)
+			default:
+				return nil, xerrors.New(err)
+			}
+
+		}
+	}
+
+	return newArticle[0], nil
 }
 
 func (c *Core) IsFavouriteArticleByUser(articleId int64, user *auth.User) (bool, error) {
