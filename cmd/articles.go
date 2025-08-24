@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/filter"
 	"github.com/siahsang/blog/internal/utils/collectionutils"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
@@ -63,27 +65,30 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			tagModels = append(tagModels, &models.Tag{Name: strings.TrimSpace(tag)})
 		}
 
-		tags, err := app.core.CreateTag(tagModels)
-		if err != nil {
-			switch {
-			case errors.Is(err, core.ErrDuplicatedSlug):
-				app.internalErrorResponse(w, r, err)
-				return
-			default:
-				app.internalErrorResponse(w, r, err)
-				return
-			}
-		}
 		user, _ := app.auth.GetAuthenticatedUser(r)
-		createdTags = tags
-		slug := app.core.CreateSlug(requestPayload.Title)
-		article, err := app.core.CreateArticle(&models.Article{
-			Title:       requestPayload.Title,
-			Description: requestPayload.Description,
-			Body:        requestPayload.Body,
-			Slug:        slug,
-			AuthorID:    user.ID,
-		}, createdTags)
+		article, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (*models.Article, error) {
+			tags, err := app.core.CreateTag(r.Context(), tagModels)
+			if err != nil {
+				switch {
+				case errors.Is(err, core.ErrDuplicatedSlug):
+					app.internalErrorResponse(w, r, err)
+					return nil, err
+				default:
+					app.internalErrorResponse(w, r, err)
+					return nil, err
+				}
+			}
+			createdTags = tags
+			slug := app.core.CreateSlug(requestPayload.Title)
+
+			return app.core.CreateArticle(txCtx, &models.Article{
+				Title:       requestPayload.Title,
+				Description: requestPayload.Description,
+				Body:        requestPayload.Body,
+				Slug:        slug,
+				AuthorID:    user.ID,
+			}, createdTags)
+		})
 
 		if err != nil {
 			switch {
@@ -134,7 +139,7 @@ func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, _ := app.auth.GetAuthenticatedUser(r)
-	response, err := prepareMultiArticleResponse(articles, app, user)
+	response, err := prepareMultiArticleResponse(r, articles, app, user)
 	if err != nil {
 		app.internalErrorResponse(w, r, err)
 		return
@@ -181,7 +186,7 @@ func articleResponse(article *models.Article, createdTags []*models.Tag, isFavor
 	}
 }
 
-func prepareMultiArticleResponse(articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
+func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
 	type AuthorEnvelop struct {
 		Username  string  `json:"username"`
 		Bio       *string `json:"bio"`
@@ -210,15 +215,15 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 		return nil, err
 	}
 
-	favouriteArticleByArticleId, err := app.core.FavouriteArticleByArticleId(articlesIdList, currentLoginUser)
+	favouriteArticleByArticleId, err := app.core.FavouriteArticleByArticleId(r.Context(), articlesIdList, currentLoginUser)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
-	favouriteCountByArticleId, err := app.core.FavouriteCountByArticleId(articlesIdList)
+	favouriteCountByArticleId, err := app.core.FavouriteCountByArticleId(r.Context(), articlesIdList)
 	userIdList := functional.Map(articles, func(article *models.Article) int64 {
 		return article.AuthorID
 	})
-	listOfUser, err := app.core.GetUsersByIdList(userIdList)
+	listOfUser, err := app.core.GetUsersByIdList(r.Context(), userIdList)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -229,7 +234,7 @@ func prepareMultiArticleResponse(articles []*models.Article, app *application, c
 
 	var followingUserList []*auth.User
 	if currentLoginUser != nil {
-		followingUserList, err = app.core.GetFollowingUserList(currentLoginUser.Username)
+		followingUserList, err = app.core.GetFollowingUserList(r.Context(), currentLoginUser.Username)
 		if err != nil {
 			return nil, xerrors.New(err)
 		}

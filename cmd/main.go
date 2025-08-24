@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"log/slog"
 	"os"
 	"sync"
@@ -14,10 +15,12 @@ import (
 )
 
 type application struct {
-	auth   *auth.Auth
-	core   *core.Core
-	logger *slog.Logger
-	wg     sync.WaitGroup
+	auth    *auth.Auth
+	core    *core.Core
+	logger  *slog.Logger
+	wg      sync.WaitGroup
+	db      *sql.DB
+	session databaseutils.Session
 }
 
 func main() {
@@ -38,12 +41,13 @@ func main() {
 	}()
 
 	logger.Info("Database connection established successfully")
-
 	app := application{
-		auth:   auth.New(),
-		core:   core.NewDB(db, logger, 3*time.Second),
-		logger: logger,
-		wg:     sync.WaitGroup{},
+		auth:    auth.New(),
+		core:    core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second)),
+		logger:  logger,
+		wg:      sync.WaitGroup{},
+		db:      db,
+		session: databaseutils.NewSession(db),
 	}
 
 	if err := app.serve(); err != nil {

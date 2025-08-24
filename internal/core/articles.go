@@ -18,7 +18,7 @@ import (
 var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
 var ErrDuplicatedArticleTag = xerrors.Message("Duplicate article tag")
 
-func (c *Core) CreateArticle(article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
+func (c *Core) CreateArticle(context context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
 
 	insertSQL := `
 		INSERT INTO articles (slug,title,description,body,created_at,updated_at,author_id)
@@ -26,7 +26,7 @@ func (c *Core) CreateArticle(article *models.Article, tagModels []*models.Tag) (
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 
-	newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
+	newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
 		var article models.Article
 		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -43,7 +43,7 @@ func (c *Core) CreateArticle(article *models.Article, tagModels []*models.Tag) (
 			return nil, xerrors.New(err)
 		}
 	}
-	savedTagList, err := c.CreateTag(tagModels)
+	savedTagList, err := c.CreateTag(context, tagModels)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -59,7 +59,7 @@ func (c *Core) CreateArticle(article *models.Article, tagModels []*models.Tag) (
 			ArticleID int64
 			TagID     int64
 		}
-		_, err := databaseutils.ExecuteQuery(c.sqlTemplate, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
+		_, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
 			qr := &QueryResult{}
 			if err := rows.Scan(&qr.ArticleID, &qr.TagID); err != nil {
 				return nil, xerrors.New(err)
@@ -105,7 +105,7 @@ func (c *Core) IsFavouriteArticleByUser(articleId int64, user *auth.User) (bool,
 	return isFavourite, nil
 }
 
-func (c *Core) FavouriteArticleByArticleId(articleIdList []int64, user *auth.User) (map[int64]bool, error) {
+func (c *Core) FavouriteArticleByArticleId(context context.Context, articleIdList []int64, user *auth.User) (map[int64]bool, error) {
 	result := map[int64]bool{}
 	for _, articleId := range articleIdList {
 		result[articleId] = false
@@ -119,7 +119,7 @@ func (c *Core) FavouriteArticleByArticleId(articleIdList []int64, user *auth.Use
 		SELECT article_id FROM favourite_articles WHERE user_id = $1 and article_id in (%s)
 	`, strings.Join(placeholders, ","))
 
-	queryResult, err := databaseutils.ExecuteQuery(c.sqlTemplate, selectSQL, func(rows *sql.Rows) (int64, error) {
+	queryResult, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (int64, error) {
 		var articleId int64
 		if err := rows.Scan(&articleId); err != nil {
 			return 0, xerrors.New(err)
@@ -138,7 +138,7 @@ func (c *Core) FavouriteArticleByArticleId(articleIdList []int64, user *auth.Use
 	return result, nil
 }
 
-func (c *Core) FavouriteCountByArticleId(articleIdList []int64) (map[int64]int64, error) {
+func (c *Core) FavouriteCountByArticleId(context context.Context, articleIdList []int64) (map[int64]int64, error) {
 	result := map[int64]int64{}
 	for _, articleId := range articleIdList {
 		result[articleId] = 0
@@ -161,7 +161,7 @@ func (c *Core) FavouriteCountByArticleId(articleIdList []int64) (map[int64]int64
 		Count     int64
 	}
 
-	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, selectSQL, func(rows *sql.Rows) (*QueryResult, error) {
+	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*QueryResult, error) {
 		var queryResult *QueryResult
 
 		if err := rows.Scan(&queryResult.ArticleId, &queryResult.Count); err != nil {

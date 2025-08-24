@@ -2,28 +2,21 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/utils/collectionutils"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/models"
-	"log/slog"
 	"strings"
 	"time"
 )
 
-func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
+func (c *Core) CreateTag(context context.Context, tags []*models.Tag) ([]*models.Tag, error) {
 
 	if len(tags) == 0 {
 		return nil, xerrors.New("No tags provided")
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	tx, err := c.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, xerrors.New(err)
-	}
-
-	defer tx.Rollback()
 
 	// The SQL statement will look like: INSERT INTO tags (name) VALUES ($1), ($2), ...
 	valueString := make([]string, 0, len(tags))
@@ -46,37 +39,25 @@ func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
 		  	RETURNING id, name
 `, valueCluses)
 
-	rows, err := tx.QueryContext(ctx, insertSQL, valueArgs...)
-	if err != nil {
-		return nil, xerrors.New(err)
-	}
-
-	defer func() {
-		if err := rows.Close(); err != nil {
-			// Log the close error, but it might not be the primary error.
-			c.log.Error("failed to close rows", slog.String("error", err.Error()))
+	tagList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, insertSQL, func(rows *sql.Rows) (*models.Tag, error) {
+		tag := &models.Tag{}
+		if err := rows.Scan(&tag.ID, &tag.Name); err != nil {
+			return nil, xerrors.Newf("failed to scan returned tag: %w", err)
 		}
-	}()
+
+		return tag, nil
+	}, valueArgs...)
+
+	if err != nil {
+		return nil, xerrors.Newf("failed to insert tags: %w", err)
+	}
 
 	// Use a map to efficiently store and retrieve the returned tags by name.
 	// This helps correctly match the returned IDs to the original input tags,
 	// especially if the order of results isn't guaranteed to match the input.
-	returnTagsMap := make(map[string]*models.Tag)
-	for rows.Next() {
-		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			return nil, xerrors.Newf("failed to scan returned tag: %w", err)
-		}
-		returnTagsMap[name] = &models.Tag{
-			ID:   id,
-			Name: name,
-		}
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, xerrors.Newf("error iterating over returned tags: %w", err)
-	}
+	returnTagsMap := collectionutils.Associate(tagList, func(tag *models.Tag) (string, *models.Tag) {
+		return tag.Name, tag
+	})
 
 	resultTags := make([]*models.Tag, 0, len(tags))
 	for _, tag := range tags {
@@ -86,10 +67,6 @@ func (c *Core) CreateTag(tags []*models.Tag) ([]*models.Tag, error) {
 		} else {
 			return nil, xerrors.Newf("tag %s not found in database", tag.Name)
 		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, xerrors.Newf("failed to commit transaction: %w", err)
 	}
 
 	return resultTags, nil

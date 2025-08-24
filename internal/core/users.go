@@ -111,7 +111,7 @@ func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
 	return &user, nil
 }
 
-func (c *Core) GetUsersByIdList(userIdList []int64) ([]*auth.User, error) {
+func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]*auth.User, error) {
 	if len(userIdList) == 0 {
 		return []*auth.User{}, nil
 	}
@@ -123,7 +123,7 @@ func (c *Core) GetUsersByIdList(userIdList []int64) ([]*auth.User, error) {
 		WHERE id in (%s)
 	`, strings.Join(placeholders, ", "))
 
-	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, query, func(rows *sql.Rows) (*auth.User, error) {
+	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
 		var user *auth.User = &auth.User{}
 
 		if err := rows.Scan(&user.ID,

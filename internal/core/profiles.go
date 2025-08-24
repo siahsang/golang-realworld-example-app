@@ -49,7 +49,7 @@ func (c *Core) GetProfile(username string) (*models.Profile, error) {
 	return profile, nil
 }
 
-func (c *Core) GetFollowingUserList(username string) ([]*auth.User, error) {
+func (c *Core) GetFollowingUserList(context context.Context, username string) ([]*auth.User, error) {
 	user, err := c.GetUserByUsername(username)
 	if err != nil {
 		return nil, xerrors.New(err)
@@ -62,7 +62,7 @@ func (c *Core) GetFollowingUserList(username string) ([]*auth.User, error) {
 			WHERE follower_id = $1
 		)
 	`
-	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
+	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
 		var tempUser = &auth.User{}
 
 		if err := rows.Scan(&tempUser.ID,

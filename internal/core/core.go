@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"log/slog"
-	"time"
 )
 
 type Core struct {
@@ -13,13 +12,10 @@ type Core struct {
 	sqlTemplate *databaseutils.SQLTemplate
 }
 
-func NewDB(dbConn *sql.DB, log *slog.Logger, timeout time.Duration) *Core {
+func NewCore(dbConn *sql.DB, log *slog.Logger, sqlTemplate *databaseutils.SQLTemplate) *Core {
 	return &Core{
-		log: log,
-		db:  dbConn,
-		sqlTemplate: &databaseutils.SQLTemplate{
-			DB:      dbConn,
-			Timeout: timeout,
-		},
+		log:         log,
+		db:          dbConn,
+		sqlTemplate: sqlTemplate,
 	}
 }

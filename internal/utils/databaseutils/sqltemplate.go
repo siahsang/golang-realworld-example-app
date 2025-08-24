@@ -18,10 +18,26 @@ func NewSQLTemplate(db *sql.DB, timeout time.Duration) *SQLTemplate {
 	}
 }
 
-func ExecuteQuery[T any](sqlTemplate *SQLTemplate, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), sqlTemplate.Timeout)
+func ExecuteQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
+	var cancel context.CancelFunc
+	if sqlTemplate.Timeout > 0 {
+		if deadline, ok := ctx.Deadline(); ok {
+			remaining := time.Until(deadline)
+			if remaining <= 0 {
+				return nil, ctx.Err()
+			}
+			if remaining > sqlTemplate.Timeout {
+				context.WithTimeout(ctx, sqlTemplate.Timeout)
+			}
+		} else {
+			ctx, cancel = context.WithTimeout(ctx, sqlTemplate.Timeout)
+		}
+	}
+
 	defer cancel()
-	rows, err := sqlTemplate.DB.QueryContext(ctx, sql, args...)
+
+	executor := GetSQLExecutor(ctx, sqlTemplate.DB)
+	rows, err := executor.QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
