@@ -67,7 +67,7 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 
 		user, _ := app.auth.GetAuthenticatedUser(r)
 		article, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (*models.Article, error) {
-			tags, err := app.core.CreateTag(r.Context(), tagModels)
+			tags, err := app.core.CreateTag(txCtx, tagModels)
 			if err != nil {
 				switch {
 				case errors.Is(err, core.ErrDuplicatedSlug):
