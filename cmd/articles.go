@@ -246,7 +246,7 @@ func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, ap
 
 	var articlesEnvelop []ArticleEnvelope
 	for _, article := range articles {
-		tagsList := collectionutils.GetOrDefault(tagsByArticleId, article.AuthorID, []models.Tag{})
+		tagsList := collectionutils.GetOrDefault(tagsByArticleId, article.ID, []models.Tag{})
 		tagNameList := functional.Map(tagsList, func(t models.Tag) string { return t.Name })
 		isFavorited := favouriteArticleByArticleId[article.ID]
 		favoritesCount := favouriteCountByArticleId[article.ID]

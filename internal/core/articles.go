@@ -226,7 +226,7 @@ func (c *Core) GetArticles(filter filter.Filter, tag, authorUserName, favoritedB
 	}
 
 	selectSQL := `
-		SELECT a.id,a.slug,a.title,a.description,a.body,a.created_at,a.updated_at,a.author_id 
+		SELECT DISTINCT a.id,a.slug,a.title,a.description,a.body,a.created_at,a.updated_at,a.author_id
 		FROM articles AS a 
 		    LEFT JOIN articles_tags at ON a.id = at.article_id 
 		    LEFT JOIN tags t ON at.tag_id = t.id 
