@@ -7,9 +7,9 @@ import (
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/utils/collectionutils"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
+	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/models"
 	"strings"
-	"time"
 )
 
 func (c *Core) CreateTag(context context.Context, tags []*models.Tag) ([]*models.Tag, error) {
@@ -73,13 +73,10 @@ func (c *Core) CreateTag(context context.Context, tags []*models.Tag) ([]*models
 
 }
 
-func (c *Core) GetTagsByArticleId(articleIdList []int64) (map[int64][]models.Tag, error) {
+func (c *Core) GetTagsByArticleId(context context.Context, articleIdList []int64) (map[int64][]models.Tag, error) {
 	if len(articleIdList) == 0 {
 		return make(map[int64][]models.Tag), nil
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
 	// Build the placeholders for the IN clause
 	placeholders := make([]string, len(articleIdList))
@@ -96,26 +93,38 @@ func (c *Core) GetTagsByArticleId(articleIdList []int64) (map[int64][]models.Tag
 		WHERE at.article_id IN (%s)
 	`, strings.Join(placeholders, ", "))
 
-	rows, err := c.db.QueryContext(ctx, query, args...)
+	type QueryTempResult struct {
+		ArticleID int64
+		TagID     int64
+		TagName   string
+	}
+
+	foundArticleList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (QueryTempResult, error) {
+		queryTempResult := QueryTempResult{}
+		if err := rows.Scan(&queryTempResult.ArticleID, &queryTempResult.TagID, &queryTempResult.TagName); err != nil {
+			return QueryTempResult{}, xerrors.Newf("failed to scan row: %w", err)
+		}
+		return queryTempResult, nil
+	}, args)
+
 	if err != nil {
 		return nil, xerrors.Newf("failed to query tags by article ids: %w", err)
 	}
-	defer rows.Close()
 
-	result := make(map[int64][]models.Tag)
-	for rows.Next() {
-		var articleID, tagID int64
-		var tagName string
-		if err := rows.Scan(&articleID, &tagID, &tagName); err != nil {
-			return nil, xerrors.Newf("failed to scan row: %w", err)
-		}
-		result[articleID] = append(result[articleID], models.Tag{
-			ID:   tagID,
-			Name: tagName,
+	resultGroupByArticleId := collectionutils.GroupBy(foundArticleList, func(item QueryTempResult) int64 {
+		return item.ArticleID
+	})
+
+	result := make(map[int64][]models.Tag, len(resultGroupByArticleId))
+	for key, value := range resultGroupByArticleId {
+		tagList := functional.Map(value, func(item QueryTempResult) models.Tag {
+			return models.Tag{
+				ID:   item.TagID,
+				Name: item.TagName,
+			}
 		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, xerrors.Newf("row iteration error: %w", err)
+
+		result[key] = tagList
 	}
 
 	return result, nil

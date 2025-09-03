@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
@@ -81,7 +80,7 @@ func (c *Core) CreateArticle(context context.Context, article *models.Article, t
 	return newArticle[0], nil
 }
 
-func (c *Core) IsFavouriteArticleByUser(articleId int64, user *auth.User) (bool, error) {
+func (c *Core) IsFavouriteArticleByUser(context context.Context, articleId int64, user *auth.User) (bool, error) {
 	if user == nil {
 		return false, nil
 	}
@@ -92,17 +91,20 @@ func (c *Core) IsFavouriteArticleByUser(articleId int64, user *auth.User) (bool,
 		)
 	`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	var isFavourite bool
-	err := c.db.QueryRowContext(ctx, selectSQL, user.ID, articleId).Scan(&isFavourite)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil // No record found, not a favourite
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (bool, error) {
+		var isFavourite bool
+		if err := rows.Scan(&isFavourite); err != nil {
+			return false, xerrors.New(err)
 		}
+		return isFavourite, nil
+
+	}, user.ID, articleId)
+
+	if err != nil {
 		return false, xerrors.New(err)
 	}
-	return isFavourite, nil
+
+	return result, nil
 }
 
 func (c *Core) FavouriteArticleByArticleId(context context.Context, articleIdList []int64, user *auth.User) (map[int64]bool, error) {
@@ -181,19 +183,24 @@ func (c *Core) FavouriteCountByArticleId(context context.Context, articleIdList 
 	return result, nil
 }
 
-func (c *Core) FavouriteArticleCount(articleId int64) (int64, error) {
+func (c *Core) FavouriteArticleCount(context context.Context, articleId int64) (int64, error) {
 	const selectSQL = `
 		SELECT COUNT(*) FROM favourite_articles WHERE article_id = $1
 	`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	var favouriteArticleCount int64
-	err := c.db.QueryRowContext(ctx, selectSQL, articleId).Scan(&favouriteArticleCount)
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (int64, error) {
+		var favouriteArticleCount int64
+		if err := rows.Scan(&favouriteArticleCount); err != nil {
+			return 0, xerrors.New(err)
+		}
+		return favouriteArticleCount, nil
+	}, articleId)
+
 	if err != nil {
 		return 0, xerrors.New(err)
 	}
-	return favouriteArticleCount, nil
+
+	return result, nil
 }
 
 func (c *Core) CreateSlug(title string) string {
@@ -216,7 +223,7 @@ func (c *Core) CreateSlug(title string) string {
 	return slug
 }
 
-func (c *Core) GetArticles(filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, error) {
+func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, error) {
 	var favoritedById *int64
 	if strings.TrimSpace(favoritedBy) != "" {
 		user, err := c.GetUserByUsername(favoritedBy)
@@ -264,24 +271,16 @@ func (c *Core) GetArticles(filter filter.Filter, tag, authorUserName, favoritedB
 	selectSQL += "ORDER BY a.created_at DESC LIMIT $" + fmt.Sprintf("%d", argId) + " OFFSET $" + fmt.Sprintf("%d", argId+1)
 	args = append(args, filter.Limit, filter.Offset)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	rows, err := c.db.QueryContext(ctx, selectSQL, args...)
-	if err != nil {
-		return nil, xerrors.New(err)
-	}
-	defer rows.Close()
-	var result []*models.Article
-
-	for rows.Next() {
-		var article models.Article
+	result, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
+		var article *models.Article
 		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
 			return nil, xerrors.New(err)
 		}
-		result = append(result, &article)
-	}
-	if err := rows.Err(); err != nil {
+		return article, nil
+	}, args...)
+
+	if err != nil {
 		return nil, xerrors.New(err)
 	}
 

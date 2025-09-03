@@ -17,7 +17,6 @@ import (
 	"time"
 )
 
-// todo: creating article and tags should be implemented in the same transaction
 func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 	type input struct {
 		Title       string    `json:"title"`

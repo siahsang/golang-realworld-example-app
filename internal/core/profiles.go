@@ -8,7 +8,6 @@ import (
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/models"
 	"strings"
-	"time"
 )
 
 var (
@@ -17,16 +16,13 @@ var (
 )
 
 // todo: use one sql query to fetch user and following status
-func (c *Core) GetProfile(username string) (*models.Profile, error) {
+func (c *Core) GetProfile(context context.Context, username string) (*models.Profile, error) {
 
 	const queryFollowing = `
 		SELECT EXISTS (
 			SELECT 1 FROM followers WHERE follower_id = $1
 		)
 	`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
 	// Fetch user info
 	profile := &models.Profile{}
@@ -41,10 +37,19 @@ func (c *Core) GetProfile(username string) (*models.Profile, error) {
 	profile.Image = user.Image
 
 	// Check following status
-	err = c.db.QueryRowContext(ctx, queryFollowing, profile.ID).Scan(&profile.Following)
+	isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, queryFollowing, func(rows *sql.Rows) (bool, error) {
+		var isFollowing bool
+		if err := rows.Scan(&isFollowing); err != nil {
+			return false, xerrors.New(err)
+		}
+		return isFollowing, nil
+	}, profile.ID)
+
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
+
+	profile.Following = isFollowing
 
 	return profile, nil
 }
@@ -83,7 +88,7 @@ func (c *Core) GetFollowingUserList(context context.Context, username string) ([
 	return queryResultList, nil
 }
 
-func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*models.Profile, error) {
+func (c *Core) FollowUser(context context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
 
 	followeeUser, err := c.GetUserByUsername(followeeUserName)
 	if err != nil {
@@ -96,12 +101,15 @@ func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*mod
 		RETURNING user_id, follower_id
 	`
 
-	var followerID, followeeID int64
 	args := []interface{}{followeeUser.ID, followerUser.ID}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
-	err = c.db.QueryRowContext(ctx, insertSql, args...).Scan(&followerID, &followeeID)
+	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, insertSql, func(rows *sql.Rows) (bool, error) {
+		var followerID, followeeID int64
+		if err := rows.Scan(&followerID, &followeeID); err != nil {
+			return false, xerrors.New(err)
+		}
+		return true, nil
+	}, args)
 
 	if err != nil {
 		switch {
@@ -112,7 +120,7 @@ func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*mod
 		}
 	}
 
-	profile, err := c.GetProfile(followerUser.Username)
+	profile, err := c.GetProfile(context, followerUser.Username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -120,7 +128,7 @@ func (c *Core) FollowUser(followerUser auth.User, followeeUserName string) (*mod
 	return profile, nil
 }
 
-func (c *Core) UnfollowUser(followerUser auth.User, followeeUserName string) (*models.Profile, error) {
+func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
 	followeeUser, err := c.GetUserByUsername(followeeUserName)
 	if err != nil {
 		return nil, xerrors.New(err)
@@ -131,24 +139,17 @@ func (c *Core) UnfollowUser(followerUser auth.User, followeeUserName string) (*m
 		WHERE user_id = $1 AND follower_id = $2
 	`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	result, err := c.db.ExecContext(ctx, deleteSql, followeeUser.ID, followerUser.ID)
-	if err != nil {
-		return nil, xerrors.New(err)
-	}
-	affected, err := result.RowsAffected()
+	rowsAffected, err := databaseutils.ExecuteDeleteQuery(c.sqlTemplate, ctx, deleteSql, followeeUser.ID, followerUser.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
 
-	if affected == 0 {
+	if rowsAffected == 0 {
 		return nil, xerrors.New(UserIsNotFollowed)
 	}
 
-	profile, err := c.GetProfile(followerUser.Username)
+	profile, err := c.GetProfile(ctx, followerUser.Username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

@@ -19,17 +19,19 @@ var (
 	NoRecordFound        = xerrors.Message("No record found")
 )
 
-func (c *Core) CreateNewUser(user *auth.User) error {
+func (c *Core) CreateNewUser(context context.Context, user *auth.User) error {
 	query := `
 		INSERT INTO users (username, email, password)
 		VALUES ($1, $2, $3)
 		RETURNING id
 `
-	args := []interface{}{user.Username, user.Email, user.Password}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := c.db.QueryRowContext(ctx, query, args...).Scan(&user.ID)
+	args := []any{user.Username, user.Email, user.Password}
+	_, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+		if err := rows.Scan(&user.ID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return user, nil
+	}, args...)
 
 	if err != nil {
 		switch {
@@ -45,26 +47,28 @@ func (c *Core) CreateNewUser(user *auth.User) error {
 	return nil
 }
 
-func (c *Core) GetUserByEmail(email string) (*auth.User, error) {
+func (c *Core) GetUserByEmail(context context.Context, email string) (*auth.User, error) {
 	query := `
 		SELECT id, email, username, password, bio, image
 		FROM users
 		WHERE email = $1
 	`
 
-	var user auth.User
+	user, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+		var user = &auth.User{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := c.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Username,
-		&user.Password,
-		&user.Bio,
-		&user.Image,
-	)
+		if err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Username,
+			&user.Password,
+			&user.Bio,
+			&user.Image,
+		); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return user, nil
+	}, email)
 
 	if err != nil {
 		switch {
@@ -75,7 +79,7 @@ func (c *Core) GetUserByEmail(email string) (*auth.User, error) {
 		}
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
@@ -85,19 +89,21 @@ func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
 		WHERE username = $1
 	`
 
-	var user auth.User
+	user, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+		var user = &auth.User{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := c.db.QueryRowContext(ctx, query, username).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Username,
-		&user.Password,
-		&user.Bio,
-		&user.Image,
-	)
+		if err := rows.Scan(
+			&user.ID,
+			&user.Email,
+			&user.Username,
+			&user.Password,
+			&user.Bio,
+			&user.Image,
+		); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return user, nil
+	}, username)
 
 	if err != nil {
 		switch {
@@ -108,7 +114,7 @@ func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
 		}
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]*auth.User, error) {
@@ -124,7 +130,7 @@ func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]
 	`, strings.Join(placeholders, ", "))
 
 	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
-		var user *auth.User = &auth.User{}
+		var user = &auth.User{}
 
 		if err := rows.Scan(&user.ID,
 			&user.Email,
