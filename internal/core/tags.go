@@ -105,7 +105,7 @@ func (c *Core) GetTagsByArticleId(context context.Context, articleIdList []int64
 			return QueryTempResult{}, xerrors.Newf("failed to scan row: %w", err)
 		}
 		return queryTempResult, nil
-	}, args)
+	}, args...)
 
 	if err != nil {
 		return nil, xerrors.Newf("failed to query tags by article ids: %w", err)

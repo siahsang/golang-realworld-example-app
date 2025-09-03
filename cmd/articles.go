@@ -101,8 +101,14 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		isFavorited, _ := app.core.IsFavouriteArticleByUser(article.ID, user)
-		favouriteArticleCount, err := app.core.FavouriteArticleCount(article.ID)
+		isFavorited, _ := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (bool, error) {
+			return app.core.IsFavouriteArticleByUser(txCtx, article.ID, user)
+		})
+
+		favouriteArticleCount, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (int64, error) {
+			return app.core.FavouriteArticleCount(txCtx, article.ID)
+		})
+
 		if err != nil {
 			app.internalErrorResponse(w, r, err)
 			return
@@ -131,7 +137,7 @@ func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	articles, err := app.core.GetArticles(filters, tagQ, authorQ, favoritedQ)
+	articles, err := app.core.GetArticles(r.Context(), filters, tagQ, authorQ, favoritedQ)
 	if err != nil {
 		app.internalErrorResponse(w, r, err)
 		return
@@ -209,7 +215,7 @@ func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, ap
 		return a.ID
 	})
 
-	tagsByArticleId, err := app.core.GetTagsByArticleId(articlesIdList)
+	tagsByArticleId, err := app.core.GetTagsByArticleId(r.Context(), articlesIdList)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +249,7 @@ func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, ap
 		return user.ID, true
 	})
 
-	var articlesEnvelop []ArticleEnvelope
+	articlesEnvelop := []ArticleEnvelope{}
 	for _, article := range articles {
 		tagsList := collectionutils.GetOrDefault(tagsByArticleId, article.ID, []models.Tag{})
 		tagNameList := functional.Map(tagsList, func(t models.Tag) string { return t.Name })

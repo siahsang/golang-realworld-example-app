@@ -16,7 +16,7 @@ var (
 )
 
 // todo: use one sql query to fetch user and following status
-func (c *Core) GetProfile(context context.Context, username string) (*models.Profile, error) {
+func (c *Core) GetProfile(ctx context.Context, username string) (*models.Profile, error) {
 
 	const queryFollowing = `
 		SELECT EXISTS (
@@ -26,7 +26,7 @@ func (c *Core) GetProfile(context context.Context, username string) (*models.Pro
 
 	// Fetch user info
 	profile := &models.Profile{}
-	user, err := c.GetUserByUsername(username)
+	user, err := c.GetUserByUsername(ctx, username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -37,7 +37,7 @@ func (c *Core) GetProfile(context context.Context, username string) (*models.Pro
 	profile.Image = user.Image
 
 	// Check following status
-	isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, queryFollowing, func(rows *sql.Rows) (bool, error) {
+	isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, queryFollowing, func(rows *sql.Rows) (bool, error) {
 		var isFollowing bool
 		if err := rows.Scan(&isFollowing); err != nil {
 			return false, xerrors.New(err)
@@ -54,8 +54,8 @@ func (c *Core) GetProfile(context context.Context, username string) (*models.Pro
 	return profile, nil
 }
 
-func (c *Core) GetFollowingUserList(context context.Context, username string) ([]*auth.User, error) {
-	user, err := c.GetUserByUsername(username)
+func (c *Core) GetFollowingUserList(ctx context.Context, username string) ([]*auth.User, error) {
+	user, err := c.GetUserByUsername(ctx, username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -67,7 +67,7 @@ func (c *Core) GetFollowingUserList(context context.Context, username string) ([
 			WHERE follower_id = $1
 		)
 	`
-	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
+	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
 		var tempUser = &auth.User{}
 
 		if err := rows.Scan(&tempUser.ID,
@@ -88,9 +88,9 @@ func (c *Core) GetFollowingUserList(context context.Context, username string) ([
 	return queryResultList, nil
 }
 
-func (c *Core) FollowUser(context context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
+func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
 
-	followeeUser, err := c.GetUserByUsername(followeeUserName)
+	followeeUser, err := c.GetUserByUsername(ctx, followeeUserName)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -103,7 +103,7 @@ func (c *Core) FollowUser(context context.Context, followerUser auth.User, follo
 
 	args := []interface{}{followeeUser.ID, followerUser.ID}
 
-	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, insertSql, func(rows *sql.Rows) (bool, error) {
+	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, insertSql, func(rows *sql.Rows) (bool, error) {
 		var followerID, followeeID int64
 		if err := rows.Scan(&followerID, &followeeID); err != nil {
 			return false, xerrors.New(err)
@@ -120,7 +120,7 @@ func (c *Core) FollowUser(context context.Context, followerUser auth.User, follo
 		}
 	}
 
-	profile, err := c.GetProfile(context, followerUser.Username)
+	profile, err := c.GetProfile(ctx, followerUser.Username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -129,7 +129,7 @@ func (c *Core) FollowUser(context context.Context, followerUser auth.User, follo
 }
 
 func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
-	followeeUser, err := c.GetUserByUsername(followeeUserName)
+	followeeUser, err := c.GetUserByUsername(ctx, followeeUserName)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

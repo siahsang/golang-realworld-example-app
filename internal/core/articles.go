@@ -226,7 +226,7 @@ func (c *Core) CreateSlug(title string) string {
 func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, error) {
 	var favoritedById *int64
 	if strings.TrimSpace(favoritedBy) != "" {
-		user, err := c.GetUserByUsername(favoritedBy)
+		user, err := c.GetUserByUsername(context, favoritedBy)
 		if err == nil {
 			favoritedById = &user.ID
 		}
@@ -246,19 +246,19 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 	argId := 1
 
 	if tag != "" {
-		whereClause = append(whereClause, "t.name = $"+fmt.Sprintf("%d", argId))
+		whereClause = append(whereClause, " t.name = $"+fmt.Sprintf("%d", argId))
 		args = append(args, tag)
 		argId++
 	}
 
 	if authorUserName != "" {
-		whereClause = append(whereClause, "u.username = $"+fmt.Sprintf("%d", argId))
+		whereClause = append(whereClause, " u.username = $"+fmt.Sprintf("%d", argId))
 		args = append(args, authorUserName)
 		argId++
 	}
 
 	if favoritedById != nil {
-		whereClause = append(whereClause, "fa.user_id = $"+fmt.Sprintf("%d", argId))
+		whereClause = append(whereClause, " fa.user_id = $"+fmt.Sprintf("%d", argId))
 		args = append(args, *favoritedById)
 		argId++
 	}
@@ -268,11 +268,11 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 	}
 
 	// add limit and offset
-	selectSQL += "ORDER BY a.created_at DESC LIMIT $" + fmt.Sprintf("%d", argId) + " OFFSET $" + fmt.Sprintf("%d", argId+1)
+	selectSQL += " ORDER BY a.created_at DESC LIMIT $" + fmt.Sprintf("%d", argId) + " OFFSET $" + fmt.Sprintf("%d", argId+1)
 	args = append(args, filter.Limit, filter.Offset)
 
 	result, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
-		var article *models.Article
+		var article = &models.Article{}
 		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
 			return nil, xerrors.New(err)

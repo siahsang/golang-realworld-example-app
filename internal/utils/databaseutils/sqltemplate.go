@@ -36,7 +36,7 @@ func ExecuteQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql stri
 	}
 	defer rows.Close()
 
-	var results []T
+	var results = make([]T, 0)
 	for rows.Next() {
 		t, err := extractor(rows)
 		if err != nil {

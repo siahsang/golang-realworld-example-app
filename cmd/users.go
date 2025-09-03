@@ -67,7 +67,7 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := app.core.CreateNewUser(user)
+	err := app.core.CreateNewUser(r.Context(), user)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.ErrDuplicateUsername):
@@ -139,7 +139,7 @@ func (app *application) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authenticatedUser.Email = strings.TrimSpace(updateUserRequest.Email)
-	updateUser, err := app.core.UpdateUser(authenticatedUser)
+	updateUser, err := app.core.UpdateUser(r.Context(), authenticatedUser)
 	updateUser.Token = authenticatedUser.Token
 
 	if err != nil {
@@ -181,7 +181,7 @@ func (app *application) getProfile(w http.ResponseWriter, r *http.Request, ps ht
 		return
 	}
 
-	profile, err := app.core.GetProfile(username)
+	profile, err := app.core.GetProfile(r.Context(), username)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
@@ -216,7 +216,7 @@ func (app *application) followUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile, err := app.core.FollowUser(*authenticatedUser, followeeUsername)
+	profile, err := app.core.FollowUser(r.Context(), *authenticatedUser, followeeUsername)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
@@ -257,7 +257,7 @@ func (app *application) unfollowUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile, err := app.core.UnfollowUser(*authenticatedUser, followeeUsername)
+	profile, err := app.core.UnfollowUser(r.Context(), *authenticatedUser, followeeUsername)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.UserIsNotFollowed):

@@ -42,7 +42,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := app.core.GetUserByEmail(loginUserRequest.Email)
+	user, err := app.core.GetUserByEmail(r.Context(), loginUserRequest.Email)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):

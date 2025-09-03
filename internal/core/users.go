@@ -10,7 +10,6 @@ import (
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/stringutils"
 	"strings"
-	"time"
 )
 
 var (
@@ -82,7 +81,7 @@ func (c *Core) GetUserByEmail(context context.Context, email string) (*auth.User
 	return user, nil
 }
 
-func (c *Core) GetUserByUsername(username string) (*auth.User, error) {
+func (c *Core) GetUserByUsername(context context.Context, username string) (*auth.User, error) {
 	query := `
 		SELECT id, email, username, password, bio, image
 		FROM users
@@ -150,7 +149,7 @@ func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]
 	return queryResultList, nil
 }
 
-func (c *Core) UpdateUser(user *auth.User) (*auth.User, error) {
+func (c *Core) UpdateUser(context context.Context, user *auth.User) (*auth.User, error) {
 	query := `
 		UPDATE users
 		SET bio = $1,image= $2
@@ -159,18 +158,20 @@ func (c *Core) UpdateUser(user *auth.User) (*auth.User, error) {
 		
 	`
 
-	var returningUser auth.User
-	args := []interface{}{user.Bio, user.Image, user.ID}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	args := []any{user.Bio, user.Image, user.ID}
+	returningUser, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+		var user = &auth.User{}
 
-	err := c.db.QueryRowContext(ctx, query, args...).Scan(
-		&returningUser.ID,
-		&returningUser.Email,
-		&returningUser.Username,
-		&returningUser.Bio,
-		&returningUser.Image,
-	)
+		if err := rows.Scan(&user.ID,
+			&user.ID,
+			&user.Email,
+			&user.Username,
+			&user.Bio,
+			&user.Image); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return user, nil
+	}, args...)
 
 	if err != nil {
 		switch {
@@ -182,5 +183,5 @@ func (c *Core) UpdateUser(user *auth.User) (*auth.User, error) {
 	}
 
 	c.log.Info("User updated Successfully", "user_id", returningUser.ID, "email", returningUser.Email)
-	return &returningUser, nil
+	return returningUser, nil
 }
