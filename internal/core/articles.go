@@ -286,3 +286,50 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 
 	return result, nil
 }
+
+func (c *Core) UpdateArticle(context context.Context, article *models.Article) (*models.Article, error) {
+	query := `
+		UPDATE articles
+		SET title = $1, description = $2, body = $3, updated_at = $4
+		WHERE id = $5
+		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
+	`
+	args := []any{article.Title, article.Description, article.Body, time.Now(), article.ID}
+	returningArticle, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*models.Article, error) {
+		var article = &models.Article{}
+		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return article, nil
+	}, args...)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+	return returningArticle, nil
+
+}
+
+func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.Article, error) {
+	selectSQL := `
+		SELECT a.id,a.slug,a.title,a.description,a.body,a.created_at,a.updated_at,a.author_id
+		FROM articles AS a 
+		WHERE a.slug = $1
+	`
+
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
+		var article = &models.Article{}
+		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return article, nil
+	}, slug)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return result, nil
+}

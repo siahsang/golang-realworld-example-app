@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/julienschmidt/httprouter"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
@@ -119,6 +120,77 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (app *application) updateArticle(w http.ResponseWriter, r *http.Request) {
+	type updateArticlePayload struct {
+		Slug        string  `json:"slug"`
+		Title       *string `json:"title"`
+		Description *string `json:"description"`
+		Body        *string `json:"body"`
+	}
+
+	type UpdateArticleRequest struct {
+		updateArticlePayload `json:"article"`
+	}
+
+	var updateArticleRequest UpdateArticleRequest
+
+	if err := app.readJSON(w, r, &updateArticleRequest); err != nil {
+		app.badRequestResponse(w, r, &AppError{
+			ErrorMessage: err.Error(),
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	parms := httprouter.ParamsFromContext(r.Context())
+	authenticatedUser, _ := app.auth.GetAuthenticatedUser(r)
+
+	slug := strings.TrimSpace(parms.ByName("slug"))
+	articleBySlug, err := app.core.GetArticleBySlug(r.Context(), slug)
+
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	if articleBySlug == nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	if updateArticleRequest.Title != nil {
+		trimSpace := strings.TrimSpace(*updateArticleRequest.Title)
+		articleBySlug.Title = trimSpace
+	}
+
+	if updateArticleRequest.Description != nil {
+		trimSpace := strings.TrimSpace(*updateArticleRequest.Description)
+		articleBySlug.Description = trimSpace
+	}
+	if updateArticleRequest.Body != nil {
+		trimSpace := strings.TrimSpace(*updateArticleRequest.Body)
+		articleBySlug.Body = trimSpace
+	}
+
+	article, err := app.core.UpdateArticle(r.Context(), articleBySlug)
+
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	response, err := prepareSingleArticleResponse(r, article, app, authenticatedUser)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+}
+
 func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 	query := r.URL.Query()
@@ -192,6 +264,14 @@ func articleResponse(article *models.Article, createdTags []*models.Tag, isFavor
 }
 
 func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
+	return prepareArticleResponse(r, articles, app, currentLoginUser, false)
+}
+
+func prepareSingleArticleResponse(r *http.Request, article *models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
+	return prepareArticleResponse(r, []*models.Article{article}, app, currentLoginUser, true)
+}
+
+func prepareArticleResponse(r *http.Request, articles []*models.Article, app *application, currentLoginUser *auth.User, singleResponse bool) (envelope, error) {
 	type AuthorEnvelop struct {
 		Username  string  `json:"username"`
 		Bio       *string `json:"bio"`
@@ -274,7 +354,14 @@ func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, ap
 		articlesEnvelop = append(articlesEnvelop, a)
 	}
 
-	return envelope{
-		"articles": articlesEnvelop,
-	}, nil
+	if singleResponse {
+		return envelope{
+			"article": articlesEnvelop[0],
+		}, nil
+
+	} else {
+		return envelope{
+			"articles": articlesEnvelop,
+		}, nil
+	}
 }
