@@ -61,11 +61,9 @@ func (c *Core) GetFollowingUserList(ctx context.Context, username string) ([]*au
 	}
 
 	queryFollowing := `
-		SELECT EXISTS (
-			SELECT u.id, u.email, u.username, u.password, u.bio, u.image 
+		SELECT u.id, u.email, u.username, u.password, u.bio, u.image 
 			FROM users as u join followers f on u.id = f.user_id  
 			WHERE follower_id = $1
-		)
 	`
 	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
 		var tempUser = &auth.User{}

@@ -102,19 +102,13 @@ func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		isFavorited, _ := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (bool, error) {
-			return app.core.IsFavouriteArticleByUser(txCtx, article.ID, user)
-		})
-
-		favouriteArticleCount, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (int64, error) {
-			return app.core.FavouriteArticleCount(txCtx, article.ID)
-		})
-
+		response, err := prepareSingleArticleResponse(r, article, app, user)
 		if err != nil {
 			app.internalErrorResponse(w, r, err)
 			return
 		}
-		if err := app.writeJSON(w, http.StatusAccepted, articleResponse(article, createdTags, isFavorited, favouriteArticleCount), nil); err != nil {
+
+		if err := app.writeJSON(w, http.StatusAccepted, response, nil); err != nil {
 			app.internalErrorResponse(w, r, err)
 		}
 	}
@@ -229,40 +223,6 @@ func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func articleResponse(article *models.Article, createdTags []*models.Tag, isFavorited bool, FavoritesCount int64) envelope {
-	type output struct {
-		Slug           string    `json:"slug"`
-		Title          string    `json:"title"`
-		Description    string    `json:"description"`
-		Body           string    `json:"body"`
-		TagList        []string  `json:"tagList"`
-		CreatedAt      time.Time `json:"createdAt"`
-		UpdatedAt      time.Time `json:"updatedAt"`
-		Favorited      bool      `json:"favorited"`
-		FavoritesCount int64     `json:"favoritesCount"`
-	}
-
-	tagsList := make([]string, len(createdTags))
-	for i, tag := range createdTags {
-		tagsList[i] = tag.Name
-	}
-	articleEnvelop := &output{
-		Slug:           article.Slug,
-		Title:          article.Title,
-		Description:    article.Description,
-		Body:           article.Body,
-		TagList:        tagsList,
-		CreatedAt:      article.CreatedAt,
-		UpdatedAt:      article.UpdatedAt,
-		Favorited:      isFavorited,
-		FavoritesCount: FavoritesCount,
-	}
-
-	return envelope{
-		"article": articleEnvelop,
-	}
-}
-
 func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
 	return prepareArticleResponse(r, articles, app, currentLoginUser, false)
 }
@@ -283,6 +243,7 @@ func prepareArticleResponse(r *http.Request, articles []*models.Article, app *ap
 		Slug           string        `json:"slug"`
 		Title          string        `json:"title"`
 		Description    string        `json:"description"`
+		Body           *string       `json:"body,omitempty"`
 		TagList        []string      `json:"tagList"`
 		CreatedAt      time.Time     `json:"createdAt"`
 		UpdatedAt      time.Time     `json:"updatedAt"`
@@ -335,7 +296,7 @@ func prepareArticleResponse(r *http.Request, articles []*models.Article, app *ap
 		tagNameList := functional.Map(tagsList, func(t models.Tag) string { return t.Name })
 		isFavorited := favouriteArticleByArticleId[article.ID]
 		favoritesCount := favouriteCountByArticleId[article.ID]
-		a := ArticleEnvelope{
+		articleEnvelope := ArticleEnvelope{
 			Slug:           article.Slug,
 			Title:          article.Title,
 			Description:    article.Description,
@@ -351,7 +312,11 @@ func prepareArticleResponse(r *http.Request, articles []*models.Article, app *ap
 				Following: collectionutils.GetOrDefault(followingUserById, article.AuthorID, false),
 			},
 		}
-		articlesEnvelop = append(articlesEnvelop, a)
+
+		if singleResponse {
+			articleEnvelope.Body = &article.Body
+		}
+		articlesEnvelop = append(articlesEnvelop, articleEnvelope)
 	}
 
 	if singleResponse {
