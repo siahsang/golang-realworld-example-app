@@ -181,7 +181,7 @@ func (app *application) getProfile(w http.ResponseWriter, r *http.Request, ps ht
 		return
 	}
 
-	profile, err := app.core.GetProfile(r.Context(), username)
+	profile, err := app.core.GetProfileByUserName(r.Context(), username)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):

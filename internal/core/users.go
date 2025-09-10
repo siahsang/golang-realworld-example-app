@@ -149,6 +149,17 @@ func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]
 	return queryResultList, nil
 }
 
+func (c *Core) GetUsersById(ctx context.Context, userId int64) (*auth.User, error) {
+
+	list, err := c.GetUsersByIdList(ctx, []int64{userId})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return list[0], nil
+}
+
 func (c *Core) UpdateUser(context context.Context, user *auth.User) (*auth.User, error) {
 	query := `
 		UPDATE users

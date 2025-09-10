@@ -16,7 +16,7 @@ var (
 )
 
 // todo: use one sql query to fetch user and following status
-func (c *Core) GetProfile(ctx context.Context, username string) (*models.Profile, error) {
+func (c *Core) GetProfileByUserName(ctx context.Context, username string) (*models.Profile, error) {
 
 	const queryFollowing = `
 		SELECT EXISTS (
@@ -52,6 +52,15 @@ func (c *Core) GetProfile(ctx context.Context, username string) (*models.Profile
 	profile.Following = isFollowing
 
 	return profile, nil
+}
+
+func (c *Core) GetProfileByUserId(ctx context.Context, userId int64) (*models.Profile, error) {
+	user, err := c.GetUsersById(ctx, userId)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return c.GetProfileByUserName(ctx, user.Username)
 }
 
 func (c *Core) GetFollowingUserList(ctx context.Context, username string) ([]*auth.User, error) {
@@ -118,7 +127,7 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 		}
 	}
 
-	profile, err := c.GetProfile(ctx, followerUser.Username)
+	profile, err := c.GetProfileByUserName(ctx, followerUser.Username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -147,7 +156,7 @@ func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followe
 		return nil, xerrors.New(UserIsNotFollowed)
 	}
 
-	profile, err := c.GetProfile(ctx, followerUser.Username)
+	profile, err := c.GetProfileByUserName(ctx, followerUser.Username)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

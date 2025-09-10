@@ -25,3 +25,12 @@ type Tag struct {
 	ID   int64  `json:"-"`
 	Name string `json:"name"`
 }
+
+type Comment struct {
+	ID        int64
+	Body      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	AuthorID  int64
+	ArticleID int64
+}
