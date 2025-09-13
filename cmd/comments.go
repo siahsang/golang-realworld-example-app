@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/julienschmidt/httprouter"
+	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
@@ -12,11 +13,11 @@ import (
 
 // CommentResponse struct
 type CommentResponse struct {
-	ID        int64             `json:"id"`
-	CreatedAt time.Time         `json:"createdAt"`
-	UpdatedAt time.Time         `json:"updatedAt"`
-	Body      string            `json:"body"`
-	Author    CommentAuthorBody `json:"author"`
+	ID        int64              `json:"id"`
+	CreatedAt time.Time          `json:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+	Body      string             `json:"body"`
+	Author    *CommentAuthorBody `json:"author,omitempty"`
 }
 
 // CommentAuthorBody struct
@@ -57,12 +58,13 @@ func (app *application) createComment(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
 	slug := params.ByName("slug")
 
+	user, _ := app.auth.GetAuthenticatedUser(r)
 	newComment, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (*models.Comment, error) {
 		articleBySlug, err := app.core.GetArticleBySlug(txCtx, slug)
 		if err != nil {
 			return nil, err
 		}
-		user, _ := app.auth.GetAuthenticatedUser(r)
+
 		comment, err := app.core.CreateComment(txCtx, &models.Comment{
 			Body:      createCommentRequest.Body,
 			CreatedAt: time.Now(),
@@ -82,31 +84,84 @@ func (app *application) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := getSingleCommentsResponse(app, r, newComment)
+	response, err := prepareSingleCommentsResponse(app, r, newComment, user)
 	err = app.writeJSON(w, http.StatusCreated, response, nil)
 	if err != nil {
 		app.internalErrorResponse(w, r, err)
 	}
 }
 
-func getSingleCommentsResponse(app *application, r *http.Request, comment *models.Comment) (envelope, error) {
-	response := CommentResponse{}
+func (app *application) getComments(w http.ResponseWriter, r *http.Request) {
+	v := validator.New()
+	params := httprouter.ParamsFromContext(r.Context())
+	slug := params.ByName("slug")
 
-	profile, err := app.core.GetProfileByUserId(r.Context(), comment.AuthorID)
-	if err != nil {
-		return nil, err
+	v.CheckNotBlank(slug, "slug", "slug must be provided")
+
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
+		return
 	}
 
-	response.ID = comment.ID
-	response.Body = comment.Body
-	response.CreatedAt = comment.CreatedAt
-	response.UpdatedAt = comment.UpdatedAt
+	commentsBySlug, err := app.core.GetCommentsBySlug(r.Context(), slug)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
 
-	// Map the fields from models.Comment to CommentResponse
-	response.Author.Bio = profile.Bio
-	response.Author.Following = profile.Following
-	response.Author.Image = profile.Image
-	response.Author.Username = profile.Username
+	user, _ := app.auth.GetAuthenticatedUser(r)
 
-	return envelope{"comment": response}, nil
+	response, err := prepareMultiCommentsResponse(app, r, commentsBySlug, user)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+}
+
+func prepareSingleCommentsResponse(app *application, r *http.Request, comment *models.Comment, loginUser *auth.User) (envelope, error) {
+	return prepareCommentsResponse(app, r, []*models.Comment{comment}, loginUser, true)
+}
+
+func prepareMultiCommentsResponse(app *application, r *http.Request, comments []*models.Comment, loginUser *auth.User) (envelope, error) {
+	return prepareCommentsResponse(app, r, comments, loginUser, false)
+}
+
+func prepareCommentsResponse(app *application, r *http.Request, comments []*models.Comment, loginUser *auth.User, singComment bool) (envelope, error) {
+	var response []CommentResponse
+
+	for _, comment := range comments {
+		commentResponse := CommentResponse{}
+		profile, err := app.core.GetProfileByUserId(r.Context(), comment.AuthorID)
+		if err != nil {
+			return nil, err
+		}
+
+		commentResponse.ID = comment.ID
+		commentResponse.Body = comment.Body
+		commentResponse.CreatedAt = comment.CreatedAt
+		commentResponse.UpdatedAt = comment.UpdatedAt
+
+		if loginUser != nil {
+			commentResponse.Author = &CommentAuthorBody{}
+			// Map the fields from models.Comment to CommentResponse
+			commentResponse.Author.Bio = profile.Bio
+			commentResponse.Author.Following = profile.Following
+			commentResponse.Author.Image = profile.Image
+			commentResponse.Author.Username = profile.Username
+		} else {
+			commentResponse.Author = nil
+		}
+		response = append(response, commentResponse)
+	}
+
+	if singComment {
+		return envelope{"comment": response[0]}, nil
+	} else {
+		return envelope{"comments": response}, nil
+	}
 }

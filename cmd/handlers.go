@@ -13,6 +13,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/api/users/login", app.login)
 	router.GET("/api/profiles/:username", app.getProfile)
 	router.HandlerFunc(http.MethodGet, "/api/articles", app.getArticles)
+	router.HandlerFunc(http.MethodGet, "/api/articles/:slug/comments", app.getComments)
 
 	// Require authentication for these routes
 	router.HandlerFunc(http.MethodPut, "/api/user", app.requireAuthenticatedUser(app.updateUser))
@@ -21,7 +22,7 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodDelete, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.unfollowUser))
 	router.Handler(http.MethodPost, "/api/articles", app.requireAuthenticatedUser(app.createArticle))
 	router.Handler(http.MethodPut, "/api/articles/:slug", app.requireAuthenticatedUser(app.updateArticle))
-	router.Handler(http.MethodPost, "/api/articles/:slug/comments", app.requireAuthenticatedUser(app.updateArticle))
+	router.Handler(http.MethodPost, "/api/articles/:slug/comments", app.requireAuthenticatedUser(app.createComment))
 
 	return app.recoverPanic(app.authenticate(router))
 }

@@ -29,3 +29,30 @@ func (c *Core) CreateComment(context context.Context, comment *models.Comment) (
 
 	return newComment, nil
 }
+
+func (c *Core) GetCommentsBySlug(context context.Context, slug string) ([]*models.Comment, error) {
+	bySlug, err := c.GetArticleBySlug(context, slug)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	query := `
+		SELECT id,body,created_at,updated_at,author_id,article_id
+		FROM comments
+		WHERE article_id = $1
+		ORDER BY created_at DESC
+	`
+	comments, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*models.Comment, error) {
+		var comment models.Comment
+		if err := rows.Scan(&comment.ID, &comment.Body, &comment.CreatedAt, &comment.UpdatedAt, &comment.AuthorID, &comment.ArticleID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return &comment, nil
+	}, bySlug.ID)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return comments, nil
+}
