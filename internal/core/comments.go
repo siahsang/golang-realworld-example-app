@@ -56,3 +56,15 @@ func (c *Core) GetCommentsBySlug(context context.Context, slug string) ([]*model
 
 	return comments, nil
 }
+
+func (c *Core) DeleteCommentById(context context.Context, commentId int64) (int64, error) {
+	deleteSQL := `
+		DELETE FROM comments
+		WHERE id = $1
+	`
+	rowAffected, err := databaseutils.ExecuteDeleteQuery(c.sqlTemplate, context, deleteSQL, commentId)
+	if err != nil {
+		return -1, xerrors.New(err)
+	}
+	return rowAffected, nil
+}
