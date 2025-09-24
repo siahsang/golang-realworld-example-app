@@ -149,7 +149,7 @@ func (app *application) deleteComment(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := app.auth.GetAuthenticatedUser(r)
 
-	deletetRowsNum, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (int64, error) {
+	deletedRowsNum, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (int64, error) {
 		articleBySlug, err := app.core.GetArticleBySlug(txCtx, slug)
 		if err != nil {
 			return -1, err
@@ -172,11 +172,11 @@ func (app *application) deleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if deletetRowsNum <= 0 {
+	if deletedRowsNum <= 0 {
 		app.notFoundResponse(w, r)
 	}
 
-	err = app.writeJSON(w, http.StatusCreated, envelope{}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{}, nil)
 	if err != nil {
 		app.internalErrorResponse(w, r, err)
 	}
