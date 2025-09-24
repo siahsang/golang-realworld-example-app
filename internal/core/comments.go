@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/models"
@@ -57,12 +58,12 @@ func (c *Core) GetCommentsBySlug(context context.Context, slug string) ([]*model
 	return comments, nil
 }
 
-func (c *Core) DeleteCommentById(context context.Context, commentId int64) (int64, error) {
+func (c *Core) DeleteCommentById(ctx context.Context, commentId int64) (int64, error) {
 	deleteSQL := `
 		DELETE FROM comments
-		WHERE id = $1
+		WHERE id =$1
 	`
-	rowAffected, err := databaseutils.ExecuteDeleteQuery(c.sqlTemplate, context, deleteSQL, commentId)
+	rowAffected, err := databaseutils.ExecuteDeleteQuery(c.sqlTemplate, ctx, deleteSQL, commentId)
 	if err != nil {
 		return -1, xerrors.New(err)
 	}

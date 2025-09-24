@@ -2,12 +2,13 @@ package auth
 
 import (
 	"errors"
+	"net/http"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/web"
 	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"time"
 )
 
 const (
@@ -16,7 +17,8 @@ const (
 )
 
 var (
-	NotAuthenticatesUser = xerrors.Message("Not authenticated user")
+	NotAuthenticatesUser        = xerrors.Message("Not authenticated user")
+	NotAuthorizeToDeleteComment = xerrors.Message("User not authorize to delete this comment")
 )
 
 func (user *User) SetPassword(plainTextPassword string) error {
@@ -103,4 +105,12 @@ func (auth *Auth) CacheAuthenticatedUser(user *User) {
 func (auth *Auth) IsUserAuthenticated(r *http.Request) bool {
 	_, err := auth.GetAuthenticatedUser(r)
 	return err == nil
+}
+
+func (auth *Auth) CheckUserCanDeleteComment(user *User, commentId int64) error {
+	if user != nil && (user.ID == commentId) {
+		return nil
+	} else {
+		return xerrors.New(NotAuthorizeToDeleteComment)
+	}
 }

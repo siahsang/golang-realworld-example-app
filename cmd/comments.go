@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/siahsang/blog/internal/auth"
-	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
-	"net/http"
-	"time"
 )
 
 // CommentResponse struct
@@ -127,11 +129,18 @@ func (app *application) getComments(w http.ResponseWriter, r *http.Request) {
 func (app *application) deleteComment(w http.ResponseWriter, r *http.Request) {
 	params := httprouter.ParamsFromContext(r.Context())
 	slug := params.ByName("slug")
-	commentId := params.ByName("id")
+	commentId, err := strconv.ParseInt(params.ByName("id"), 10, 64)
+
+	if err != nil {
+		app.badRequestResponse(w, r, &AppError{
+			ErrorMessage: "id must be a valid integer",
+			ErrorStack:   err,
+		})
+		return
+	}
 
 	v := validator.New()
 	v.CheckNotBlank(slug, "slug", "slug must be provided")
-	v.CheckNotBlank(commentId, "id", "id must be provided")
 
 	if !v.IsValid() {
 		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
@@ -140,31 +149,37 @@ func (app *application) deleteComment(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := app.auth.GetAuthenticatedUser(r)
 
-	_, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (int64, error) {
+	deletetRowsNum, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (int64, error) {
 		articleBySlug, err := app.core.GetArticleBySlug(txCtx, slug)
 		if err != nil {
 			return -1, err
 		}
 
-		return app.core.DeleteCommentById(txCtx, commentId)
+		if err := app.auth.CheckUserCanDeleteComment(user, articleBySlug.AuthorID); err != nil {
+			return -1, err
+		}
 
+		return app.core.DeleteCommentById(txCtx, commentId)
 	})
 
 	if err != nil {
 		switch {
-		case err == core.NoRecordFound:
-			app.notFoundResponse(w, r)
-		case err == core.UserIsNotAuthorOfComment:
-			app.forbiddenResponse(w, r, &AppError{
-				ErrorMessage: err.Error(),
-				ErrorStack:   err,
-			})
+		case errors.Is(err, auth.NotAuthorizeToDeleteComment):
+			app.notPermittedResponse(w, r, err)
 		default:
 			app.internalErrorResponse(w, r, err)
 		}
 		return
 	}
 
+	if deletetRowsNum <= 0 {
+		app.notFoundResponse(w, r)
+	}
+
+	err = app.writeJSON(w, http.StatusCreated, envelope{}, nil)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+	}
 }
 
 func prepareSingleCommentsResponse(app *application, r *http.Request, comment *models.Comment, loginUser *auth.User) (envelope, error) {

@@ -74,7 +74,7 @@ func ExecuteDeleteQuery(sqlTemplate *SQLTemplate, ctx context.Context, sql strin
 	defer cancel()
 
 	executor := GetSQLExecutor(ctx, sqlTemplate.DB)
-	result, err := executor.ExecContext(ctx, sql, args)
+	result, err := executor.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return -1, err
 	}

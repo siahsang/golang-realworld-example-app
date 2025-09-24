@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/mdobak/go-xerrors"
 	"log/slog"
 	"net/http"
+
+	"github.com/mdobak/go-xerrors"
 )
 
 type AppError struct {
@@ -40,6 +41,13 @@ func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r 
 func (app *application) internalErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.errorResponse(w, r, http.StatusInternalServerError, nil, &AppError{ErrorStack: err,
 		ErrorMessage: "An internal server error occurred.",
+	})
+}
+
+func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.errorResponse(w, r, http.StatusForbidden, nil, &AppError{
+		ErrorStack:   err,
+		ErrorMessage: "your user account doesn't have the necessary permissions to access this resource",
 	})
 }
 
