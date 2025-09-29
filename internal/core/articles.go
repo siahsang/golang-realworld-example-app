@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/filter"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/stringutils"
 	"github.com/siahsang/blog/models"
-	"strings"
-	"time"
 )
 
 var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
@@ -332,4 +333,38 @@ func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.A
 	}
 
 	return result, nil
+}
+
+func (c *Core) FavoriteArticle(context context.Context, slug string, user *auth.User) (*models.Article, error) {
+	article, err := c.GetArticleBySlug(context, slug)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	const updateSQL = `
+		INSERT INTO favourite_articles (user_id, article_id)
+		VALUES ($1, $2)
+		ON CONFLICT ON CONSTRAINT favourite_articles_pkey DO NOTHING
+		RETURNING user_id,article_id
+	`
+
+	type favouriteArticle struct {
+		userId    int64
+		articleId int64
+	}
+
+	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, updateSQL, func(rows *sql.Rows) (*favouriteArticle, error) {
+		favouriteArticled := &favouriteArticle{}
+		if err := rows.Scan(&favouriteArticled.userId, &favouriteArticled.articleId); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return nil, nil
+	}, user.ID, article.AuthorID)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	return article, nil
+
 }

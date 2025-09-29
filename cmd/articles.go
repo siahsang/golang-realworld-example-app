@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
@@ -13,9 +17,6 @@ import (
 	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/internal/validator"
 	"github.com/siahsang/blog/models"
-	"net/http"
-	"strings"
-	"time"
 )
 
 func (app *application) createArticle(w http.ResponseWriter, r *http.Request) {
@@ -221,6 +222,48 @@ func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func (app *application) favouriteArticle(w http.ResponseWriter, r *http.Request) {
+	params := httprouter.ParamsFromContext(r.Context())
+	slug := params.ByName("slug")
+
+	v := validator.New()
+	v.CheckNotBlank(slug, "slug", "slug must be provided")
+
+	if !v.IsValid() {
+		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
+		return
+	}
+
+	user, _ := app.auth.GetAuthenticatedUser(r)
+	articleBySlug, err := app.core.GetArticleBySlug(r.Context(), slug)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	if articleBySlug == nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	favouriteArticle, err := app.core.FavoriteArticle(r.Context(), slug, user)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	response, err := prepareSingleArticleResponse(r, favouriteArticle, app, user)
+	if err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
+
+	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
+		app.internalErrorResponse(w, r, err)
+		return
+	}
 }
 
 func prepareMultiArticleResponse(r *http.Request, articles []*models.Article, app *application, currentLoginUser *auth.User) (envelope, error) {
