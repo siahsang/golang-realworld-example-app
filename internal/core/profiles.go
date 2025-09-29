@@ -146,7 +146,7 @@ func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followe
 		WHERE user_id = $1 AND follower_id = $2
 	`
 
-	rowsAffected, err := databaseutils.ExecuteDeleteQuery(c.sqlTemplate, ctx, deleteSql, followeeUser.ID, followerUser.ID)
+	rowsAffected, err := databaseutils.ExecuteNonQuery(c.sqlTemplate, ctx, deleteSql, followeeUser.ID, followerUser.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)

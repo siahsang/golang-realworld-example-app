@@ -348,23 +348,11 @@ func (c *Core) FavoriteArticle(context context.Context, slug string, user *auth.
 		RETURNING user_id,article_id
 	`
 
-	type favouriteArticle struct {
-		userId    int64
-		articleId int64
-	}
-
-	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, updateSQL, func(rows *sql.Rows) (*favouriteArticle, error) {
-		favouriteArticled := &favouriteArticle{}
-		if err := rows.Scan(&favouriteArticled.userId, &favouriteArticled.articleId); err != nil {
-			return nil, xerrors.New(err)
-		}
-		return nil, nil
-	}, user.ID, article.AuthorID)
+	_, err = databaseutils.ExecuteNonQuery(c.sqlTemplate, context, updateSQL, user.ID, article.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
 
 	return article, nil
-
 }

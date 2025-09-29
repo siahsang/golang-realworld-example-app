@@ -65,7 +65,7 @@ func ExecuteSingleQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sq
 	}
 }
 
-func ExecuteDeleteQuery(sqlTemplate *SQLTemplate, ctx context.Context, sql string, args ...any) (int64, error) {
+func ExecuteNonQuery(sqlTemplate *SQLTemplate, ctx context.Context, sql string, args ...any) (int64, error) {
 	var cancel context.CancelFunc
 	ctx, cancel, err := contextTimeOutAware(sqlTemplate.Timeout, ctx, cancel)
 	if err != nil {

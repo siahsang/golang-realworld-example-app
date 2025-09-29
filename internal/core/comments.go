@@ -63,7 +63,7 @@ func (c *Core) DeleteCommentById(ctx context.Context, commentId int64) (int64, e
 		DELETE FROM comments
 		WHERE id =$1
 	`
-	rowAffected, err := databaseutils.ExecuteDeleteQuery(c.sqlTemplate, ctx, deleteSQL, commentId)
+	rowAffected, err := databaseutils.ExecuteNonQuery(c.sqlTemplate, ctx, deleteSQL, commentId)
 	if err != nil {
 		return -1, xerrors.New(err)
 	}
