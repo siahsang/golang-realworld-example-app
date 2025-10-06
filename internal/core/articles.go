@@ -165,9 +165,9 @@ func (c *Core) FavouriteCountByArticleId(context context.Context, articleIdList 
 	}
 
 	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*QueryResult, error) {
-		var queryResult *QueryResult
+		queryResult := &QueryResult{}
 
-		if err := rows.Scan(&queryResult.ArticleId, &queryResult.Count); err != nil {
+		if err := rows.Scan(&queryResult.Count, &queryResult.ArticleId); err != nil {
 			return nil, xerrors.New(err)
 		}
 		return queryResult, nil
