@@ -129,3 +129,24 @@ func (c *Core) GetTagsByArticleId(context context.Context, articleIdList []int64
 
 	return result, nil
 }
+
+func (c *Core) GetTagsList(context context.Context) ([]*models.Tag, error) {
+	query := `
+		SELECT  id, name
+		FROM tags
+	`
+
+	foundTagList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*models.Tag, error) {
+		queryTempResult := &models.Tag{}
+		if err := rows.Scan(&queryTempResult.ID, &queryTempResult.Name); err != nil {
+			return nil, xerrors.Newf("failed to scan row: %w", err)
+		}
+		return queryTempResult, nil
+	})
+
+	if err != nil {
+		return nil, xerrors.Newf("failed to query tags by article ids: %w", err)
+	}
+
+	return foundTagList, nil
+}

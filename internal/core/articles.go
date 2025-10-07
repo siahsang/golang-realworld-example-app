@@ -356,3 +356,24 @@ func (c *Core) FavoriteArticle(context context.Context, slug string, user *auth.
 
 	return article, nil
 }
+
+func (c *Core) UnFavoriteArticle(context context.Context, slug string, user *auth.User) (*models.Article, error) {
+	article, err := c.GetArticleBySlug(context, slug)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
+	const deleteSQL = `
+		DELETE FROM favourite_articles
+		WHERE user_id = $1 AND article_id = $2
+		RETURNING user_id, article_id
+	`
+
+	_, err = databaseutils.ExecuteNonQuery(c.sqlTemplate, context, deleteSQL, user.ID, article.ID)
+
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+	c.log.Info("user unfavorited article", "id", user.ID, "article_id", article.ID)
+	return article, nil
+}
