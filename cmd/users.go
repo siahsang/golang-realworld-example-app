@@ -2,13 +2,14 @@ package main
 
 import (
 	"errors"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/validator"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type envelope map[string]any
@@ -84,7 +85,7 @@ func (app *application) createUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	token, err := user.GenerateToken(time.Hour * 24 * 1)
+	token, err := user.GenerateToken(time.Hour*24*1, app.config.JWTSecret)
 	user.Token = token
 	if err != nil {
 		app.internalErrorResponse(w, r, err)

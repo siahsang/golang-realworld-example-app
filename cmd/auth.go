@@ -2,10 +2,11 @@ package main
 
 import (
 	"errors"
-	"github.com/siahsang/blog/internal/core"
-	"github.com/siahsang/blog/internal/validator"
 	"net/http"
 	"time"
+
+	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/validator"
 )
 
 func (app *application) login(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +68,7 @@ func (app *application) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := user.GenerateToken(time.Hour * 24 * 1)
+	token, err := user.GenerateToken(time.Hour*24*1, app.config.JWTSecret)
 	user.Token = token
 	if err != nil {
 		app.internalErrorResponse(w, r, err)

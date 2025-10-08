@@ -3,6 +3,7 @@ package auth
 import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/siahsang/blog/internal/utils/collectionutils"
+	"github.com/siahsang/blog/internal/utils/config"
 )
 
 type User struct {
@@ -25,8 +26,11 @@ type UserClaim struct {
 
 type Auth struct {
 	authenticatedUsers *collectionutils.SafeMap[string, *User]
+	config             *config.Config
 }
 
-func New() *Auth {
-	return &Auth{}
+func New(config *config.Config) *Auth {
+	return &Auth{
+		config: config,
+	}
 }

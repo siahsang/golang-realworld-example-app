@@ -3,18 +3,21 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/golang-cz/devslog"
-	_ "github.com/lib/pq"
-	"github.com/siahsang/blog/internal/auth"
-	"github.com/siahsang/blog/internal/core"
-	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"log/slog"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/golang-cz/devslog"
+	_ "github.com/lib/pq"
+	"github.com/siahsang/blog/internal/auth"
+	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/utils/config"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 )
 
 type application struct {
+	config  *config.Config
 	auth    *auth.Auth
 	core    *core.Core
 	logger  *slog.Logger
@@ -27,7 +30,7 @@ func main() {
 	logger := configLogger()
 	logger.Info("Starting application...")
 	db, err := openDBConnection()
-
+	cfg := &config.Config{}
 	if err != nil {
 		logger.Error("Errors opening database connection: %v", err)
 		os.Exit(1)
@@ -39,15 +42,17 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+	cfg.JWTSecret = os.Getenv("JWT_SECRET")
 
 	logger.Info("Database connection established successfully")
 	app := application{
-		auth:    auth.New(),
+		auth:    auth.New(cfg),
 		core:    core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second)),
 		logger:  logger,
 		wg:      sync.WaitGroup{},
 		db:      db,
 		session: databaseutils.NewSession(db),
+		config:  cfg,
 	}
 
 	if err := app.serve(); err != nil {

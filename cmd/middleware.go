@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/mdobak/go-xerrors"
-	"github.com/siahsang/blog/internal/core"
 	"net/http"
 	"strings"
+
+	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/core"
 )
 
 func (app *application) authenticate(next http.Handler) http.Handler {
@@ -21,7 +22,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 				return
 			}
 			token := autherizationParts[1]
-			authenticate, err := app.auth.Authenticate(token)
+			authenticate, err := app.auth.Authenticate(token, app.config.JWTSecret)
 			if err != nil {
 				app.invalidAuthenticationTokenResponse(w, r, err)
 				return
