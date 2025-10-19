@@ -62,7 +62,7 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 				w.Header().Set("Connection:", "close")
 				app.internalErrorResponse(w, r, fmt.Errorf("%s", err))
 			}
-			next.ServeHTTP(w, r)
 		}()
+		next.ServeHTTP(w, r)
 	})
 }
