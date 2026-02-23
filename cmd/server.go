@@ -9,12 +9,17 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/siahsang/blog/internal/server"
 )
 
 func (app *application) serve() error {
-	server := &http.Server{
+
+	ginEngine := server.NewHttpServer(true, app.uiRouter, app.uiConfig)
+
+	srv := &http.Server{
 		Addr:         ":9091",
-		Handler:      app.routes(),
+		Handler:      ginEngine,
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelInfo),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
@@ -30,18 +35,18 @@ func (app *application) serve() error {
 		app.logger.Info("caught signal", slog.String("signal", s.String()))
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		err := server.Shutdown(ctx)
+		err := srv.Shutdown(ctx)
 		if err != nil {
 			shutdownError <- err
 		}
 
-		app.logger.Info("completing background tasks", "address", server.Addr)
+		app.logger.Info("completing background tasks", "address", srv.Addr)
 		app.wg.Wait()
 		shutdownError <- nil
 	}()
 
-	app.logger.Info("starting server", slog.String("address", server.Addr))
-	err := server.ListenAndServe()
+	app.logger.Info("starting server", slog.String("address", srv.Addr))
+	err := srv.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
@@ -52,7 +57,7 @@ func (app *application) serve() error {
 		return err
 	}
 
-	app.logger.Info("server stopped", slog.String("address", server.Addr))
+	app.logger.Info("server stopped", slog.String("address", srv.Addr))
 	return nil
 
 }

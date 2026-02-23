@@ -426,9 +426,9 @@ func prepareArticleResponse(r *http.Request, articles []*models.Article, app *ap
 			"article": articlesEnvelop[0],
 		}, nil
 
-	} else {
-		return envelope{
-			"articles": articlesEnvelop,
-		}, nil
 	}
+
+	return envelope{
+		"articles": articlesEnvelop,
+	}, nil
 }

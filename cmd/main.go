@@ -12,24 +12,28 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/router"
+	"github.com/siahsang/blog/internal/server"
 	"github.com/siahsang/blog/internal/utils/config"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 )
 
 type application struct {
-	config  *config.Config
-	auth    *auth.Auth
-	core    *core.Core
-	logger  *slog.Logger
-	wg      sync.WaitGroup
-	db      *sql.DB
-	session databaseutils.Session
+	config   *config.Config
+	uiConfig *server.UIConfig
+	uiRouter *router.UIRouter
+	auth     *auth.Auth
+	core     *core.Core
+	logger   *slog.Logger
+	wg       sync.WaitGroup
+	db       *sql.DB
+	session  databaseutils.Session
 }
 
 func main() {
 	logger := configLogger()
 	logger.Info("Starting application...")
-	db, err := openDBConnection()
+	db, err := openDBConnection(logger)
 	cfg := &config.Config{}
 	if err != nil {
 		logger.Error("Errors opening database connection: %v", err)
@@ -42,21 +46,29 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
 	cfg.JWTSecret = os.Getenv("JWT_SECRET")
 
-	logger.Info("Database connection established successfully")
+	uiConfig := &server.UIConfig{
+		APIBaseURL: "/api",
+	}
+
+	uiRouter := router.NewUIRouter(logger)
+
 	app := application{
-		auth:    auth.New(cfg),
-		core:    core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second)),
-		logger:  logger,
-		wg:      sync.WaitGroup{},
-		db:      db,
-		session: databaseutils.NewSession(db),
-		config:  cfg,
+		uiConfig: uiConfig,
+		uiRouter: uiRouter,
+		auth:     auth.New(cfg),
+		core:     core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second)),
+		logger:   logger,
+		wg:       sync.WaitGroup{},
+		db:       db,
+		session:  databaseutils.NewSession(db),
+		config:   cfg,
 	}
 
 	if err := app.serve(); err != nil {
-		logger.Error("ErrorStack starting server: %v", err)
+		logger.Error("Error in starting server: %v", err)
 		os.Exit(1)
 	}
 }
@@ -75,7 +87,7 @@ func configLogger() *slog.Logger {
 	return logger
 }
 
-func openDBConnection() (*sql.DB, error) {
+func openDBConnection(logger *slog.Logger) (*sql.DB, error) {
 	db, err := sql.Open("postgres", "postgres://postgres:postgres@localhost/myblog?sslmode=disable")
 	if err != nil {
 		return nil, err
@@ -95,6 +107,7 @@ func openDBConnection() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("Database connection established successfully")
 
 	return db, nil
 }
