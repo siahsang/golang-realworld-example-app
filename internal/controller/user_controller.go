@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/schema"
 )
 

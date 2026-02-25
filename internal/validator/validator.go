@@ -1,60 +1,62 @@
 package validator
 
 import (
-	"regexp"
+	"reflect"
 	"strings"
+	"sync"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/microcosm-cc/bluemonday"
 )
 
-var rx = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-
 type Validator struct {
-	Errors map[string]string
+	Validate *validator.Validate
 }
 
-func New() *Validator {
-	return &Validator{Errors: make(map[string]string)}
-}
+var instance *Validator
+var once sync.Once
 
-func (v *Validator) IsValid() bool {
-	return len(v.Errors) == 0
-}
+func GetValidator() *Validator {
+	once.Do(func() {
+		valitator := validator.New(validator.WithRequiredStructEnabled())
+		valitator.RegisterValidation("sanitizer", Sanitizer)
+		valitator.RegisterTagNameFunc(func(fld reflect.StructField) string {
+			if jsonTag := fld.Tag.Get("json"); len(jsonTag) > 0 {
+				if jsonTag == "-" {
+					return ""
+				}
+				return jsonTag
+			}
+			if formTag := fld.Tag.Get("form"); len(formTag) > 0 {
+				return formTag
+			}
+			return fld.Name
+		})
 
-func (v *Validator) AddError(key, message string) {
-	if _, exists := v.Errors[key]; !exists {
-		v.Errors[key] = message
-	}
-}
-
-func (v *Validator) Check(ok bool, key, message string) {
-	if !ok {
-		v.AddError(key, message)
-	}
-}
-
-func (v *Validator) IsMatch(value string, rx *regexp.Regexp) bool {
-	return rx.MatchString(value)
-}
-
-func (v *Validator) CheckEmail(mail string, errMsg string) {
-	if !v.IsMatch(mail, rx) {
-		v.AddError("email", errMsg)
-	}
-}
-
-func (v *Validator) CheckNotBlank(str string, key string, errMsg string) {
-	if strings.TrimSpace(str) == "" {
-		v.AddError(key, errMsg)
-	}
-}
-
-func (v *Validator) IsUnique(value []string) bool {
-	uniqueValues := make(map[string]bool)
-
-	for _, val := range value {
-		if _, exists := uniqueValues[val]; exists {
-			return false
+		instance = &Validator{
+			Validate: validator.New(),
 		}
-		uniqueValues[val] = true
+	})
+
+	return instance
+}
+
+func Sanitizer(fl validator.FieldLevel) bool {
+	field := fl.Field()
+
+	switch field.Kind() {
+	case reflect.String:
+		filter := bluemonday.UGCPolicy()
+		content := strings.ReplaceAll(filter.Sanitize(field.String()), "&amp;", "&")
+		field.SetString(content)
+		return true
+
+	case reflect.Chan, reflect.Map, reflect.Slice, reflect.Array:
+		return field.Len() > 0
+	case reflect.Ptr, reflect.Interface, reflect.Func:
+		return !field.IsNil()
+	default:
+		return field.IsValid() && field.Interface() != reflect.Zero(field.Type()).Interface()
+
 	}
-	return true
 }
