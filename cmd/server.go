@@ -14,7 +14,7 @@ import (
 )
 
 func (app *application) serve() error {
-
+	//
 	ginEngine := server.NewHttpServer(true, app.uiRouter, app.uiConfig)
 
 	srv := &http.Server{
