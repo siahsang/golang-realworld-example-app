@@ -13,14 +13,19 @@ type Validator struct {
 	Validate *validator.Validate
 }
 
+type FormErrorField struct {
+	ErrorField string `json:"error_field"`
+	ErrorMsg   string `json:"error_msg"`
+}
+
 var instance *Validator
 var once sync.Once
 
 func GetValidator() *Validator {
 	once.Do(func() {
-		valitator := validator.New(validator.WithRequiredStructEnabled())
-		valitator.RegisterValidation("sanitizer", Sanitizer)
-		valitator.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		myValidator := validator.New(validator.WithRequiredStructEnabled())
+		myValidator.RegisterValidation("sanitizer", Sanitizer)
+		myValidator.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			if jsonTag := fld.Tag.Get("json"); len(jsonTag) > 0 {
 				if jsonTag == "-" {
 					return ""
@@ -34,11 +39,15 @@ func GetValidator() *Validator {
 		})
 
 		instance = &Validator{
-			Validate: validator.New(),
+			Validate: myValidator,
 		}
 	})
 
 	return instance
+}
+
+func (v *Validator) Check(value any) (*[]FormErrorField, error) {
+  
 }
 
 func Sanitizer(fl validator.FieldLevel) bool {
