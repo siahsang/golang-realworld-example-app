@@ -8,3 +8,15 @@ type UserLoginPayloadReq struct {
 type UserRegisterPayloadReq struct {
 	UserLoginPayloadReq `json:"user" validate:"required"`
 }
+
+
+type UserRegisterReqPayload struct {
+	Email    string `validate:"required,email,gt=2,lte=30" json:"email"`
+	Username string `validate:"required,gt=5,lte=30" json:"username"`
+	Password string `validate:"required,gt=8,lte=30" json:"password"`
+}
+
+type UserRegisterReq struct {
+	UserRegisterReqPayload `json:"user"`
+}
+

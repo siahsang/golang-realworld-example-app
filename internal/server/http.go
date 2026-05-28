@@ -7,7 +7,9 @@ import (
 
 func NewHttpServer(debug bool,
 	uiRouter *router.UIRouter,
-	uiConfig *UIConfig) *gin.Engine {
+	uiConfig *UIConfig,
+	blogAPIRouter *router.BlogAPIRouter,
+) *gin.Engine {
 
 	if debug {
 		gin.SetMode(gin.DebugMode)
@@ -23,7 +25,9 @@ func NewHttpServer(debug bool,
 	// handle 404 and static files
 	uiRouter.RegisterUIRouter(ginEngine, uiConfig.APIBaseURL)
 
-	// handle must not be authenticated routes
+	// route must be available without logging in
+	mustNotAuthGroupAPI := ginEngine.Group(uiConfig.APIBaseURL)
+	blogAPIRouter.RegisterMustNotAuthAPIRouter(mustNotAuthGroupAPI)
 
 	return ginEngine
 }

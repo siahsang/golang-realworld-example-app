@@ -1,4 +1,4 @@
-package main
+package errors
 
 import (
 	"log/slog"
@@ -8,6 +8,7 @@ import (
 )
 
 type AppError struct {
+	Code int
 	ErrorStack   error
 	ErrorMessage string
 	ErrorDetails map[string]string
@@ -80,4 +81,8 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 		app.logger.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+}
+
+func (appError AppError) Error() string {
+	return appError.ErrorMessage
 }
