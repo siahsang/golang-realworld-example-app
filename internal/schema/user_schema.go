@@ -13,7 +13,7 @@ type UserRegisterPayloadReq struct {
 type UserRegisterReqPayload struct {
 	Email    string `validate:"required,email,gt=2,lte=30" json:"email"`
 	Username string `validate:"required,gt=4,lte=30" json:"username"`
-	Password string `validate:"required,gt=8,lte=30" json:"password"`
+	Password string `validate:"required,gte=8,lte=30" json:"password"`
 }
 
 type UserRegisterReq struct {
