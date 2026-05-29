@@ -20,7 +20,7 @@ func HandleResponse(ctx *gin.Context, data any, err error) {
 
 	var appError *myblogError.AppError
 	if !errors.As(err, &appError) {
-		slog.Error("http_handle HandleResponse fail, %s", err.Error())
+		slog.Error("http_handle HandleResponse fail", "error", err)
 		errorResponse(ctx, nil, &myblogError.AppError{
 			Code:         http.StatusInternalServerError,
 			ErrorMessage: "Internal server error",
@@ -34,7 +34,7 @@ func HandleResponse(ctx *gin.Context, data any, err error) {
 
 func BindAndCheck(ctx *gin.Context, data any) bool {
 	if err := ctx.ShouldBind(data); err != nil {
-		slog.Error("http_handle BindAndCheck fail, %s", err.Error())
+		slog.Error("http_handle BindAndCheck fail", "error", err)
 		appError := myblogError.AppError{
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "Invalid request payload",

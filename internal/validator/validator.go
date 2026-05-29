@@ -54,7 +54,7 @@ func (v *Validator) Check(value any) (errFields []*FormErrorField, err error) {
 	if err != nil {
 		var validationErrors validator.ValidationErrors
 		if !errors.As(err, &validationErrors) {
-			slog.Error("validation check exception: %s", err.Error())
+			slog.Error("validation check exception", "error", err)
 			return nil, xerrors.Newf("validation check exception: %w", err)
 		}
 

@@ -5,7 +5,8 @@ import (
 	"github.com/siahsang/blog/internal/router"
 )
 
-func NewHttpServer(debug bool,
+func NewHttpServer(
+	debug bool,
 	uiRouter *router.UIRouter,
 	uiConfig *UIConfig,
 	blogAPIRouter *router.BlogAPIRouter,
@@ -17,8 +18,7 @@ func NewHttpServer(debug bool,
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	ginEngine := gin.New()
-	ginEngine.Use(gin.Logger())
+	ginEngine := gin.Default()
 
 	//static := ginEngine.Group(uiConfig.APIBaseURL)
 

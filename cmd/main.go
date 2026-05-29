@@ -38,13 +38,13 @@ func main() {
 	db, err := openDBConnection(logger)
 	cfg := &config.Config{}
 	if err != nil {
-		logger.Error("Errors opening database connection: %v", err)
+		logger.Error("Errors opening database connection", "error", err)
 		os.Exit(1)
 	}
 
 	defer func() {
 		if err := db.Close(); err != nil {
-			logger.Error("Errors closing database connection: %v", err)
+			logger.Error("Errors closing database connection", "error", err)
 			os.Exit(1)
 		}
 	}()
@@ -75,7 +75,7 @@ func main() {
 	}
 
 	if err := app.serve(); err != nil {
-		logger.Error("Error in starting server: %v", err)
+		logger.Error("Error in starting server", "error", err)
 		os.Exit(1)
 	}
 }
