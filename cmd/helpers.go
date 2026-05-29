@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mdobak/go-xerrors"
-	"github.com/siahsang/blog/internal/validator"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/mdobak/go-xerrors"
+	"github.com/siahsang/blog/internal/validator"
 )
 
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
@@ -106,7 +107,7 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int64, v
 
 	int64Value, err := strconv.ParseInt(qValue, 10, 64)
 	if err != nil {
-		v.AddError(key, fmt.Sprintf("must be a valid integer: %s", qValue))
+		//v.AddError(key, fmt.Sprintf("must be a valid integer: %s", qValue))
 		return defaultValue
 	}
 

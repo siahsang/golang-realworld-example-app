@@ -11,6 +11,7 @@ import (
 	"github.com/golang-cz/devslog"
 	_ "github.com/lib/pq"
 	"github.com/siahsang/blog/internal/auth"
+	"github.com/siahsang/blog/internal/controller"
 	"github.com/siahsang/blog/internal/core"
 	"github.com/siahsang/blog/internal/router"
 	"github.com/siahsang/blog/internal/server"
@@ -19,15 +20,16 @@ import (
 )
 
 type application struct {
-	config   *config.Config
-	uiConfig *server.UIConfig
-	uiRouter *router.UIRouter
-	auth     *auth.Auth
-	core     *core.Core
-	logger   *slog.Logger
-	wg       sync.WaitGroup
-	db       *sql.DB
-	session  databaseutils.Session
+	config        *config.Config
+	uiConfig      *server.UIConfig
+	uiRouter      *router.UIRouter
+	blogAPIRouter *router.BlogAPIRouter
+	auth          *auth.Auth
+	core          *core.Core
+	logger        *slog.Logger
+	wg            sync.WaitGroup
+	db            *sql.DB
+	session       databaseutils.Session
 }
 
 func main() {
@@ -54,17 +56,22 @@ func main() {
 	}
 
 	uiRouter := router.NewUIRouter(logger)
+	core := core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	userController := controller.NewUserController(
+		core,
+		logger, cfg)
 
 	app := application{
-		uiConfig: uiConfig,
-		uiRouter: uiRouter,
-		auth:     auth.New(cfg),
-		core:     core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second)),
-		logger:   logger,
-		wg:       sync.WaitGroup{},
-		db:       db,
-		session:  databaseutils.NewSession(db),
-		config:   cfg,
+		uiConfig:      uiConfig,
+		uiRouter:      uiRouter,
+		blogAPIRouter: router.NewBlogAPIRouter(userController),
+		auth:          auth.New(cfg),
+		core:          core,
+		logger:        logger,
+		wg:            sync.WaitGroup{},
+		db:            db,
+		session:       databaseutils.NewSession(db),
+		config:        cfg,
 	}
 
 	if err := app.serve(); err != nil {

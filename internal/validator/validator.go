@@ -1,11 +1,14 @@
 package validator
 
 import (
+	"errors"
+	"log/slog"
 	"reflect"
 	"strings"
 	"sync"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/mdobak/go-xerrors"
 	"github.com/microcosm-cc/bluemonday"
 )
 
@@ -46,8 +49,39 @@ func GetValidator() *Validator {
 	return instance
 }
 
-func (v *Validator) Check(value any) (*[]FormErrorField, error) {
-  
+func (v *Validator) Check(value any) (errFields []*FormErrorField, err error) {
+	err = v.Validate.Struct(value)
+	if err != nil {
+		var validationErrors validator.ValidationErrors
+		if !errors.As(err, &validationErrors) {
+			slog.Error("validation check exception: %s", err.Error())
+			return nil, xerrors.Newf("validation check exception: %w", err)
+		}
+
+		for _, fieldError := range validationErrors {
+			formErrField := &FormErrorField{
+				ErrorField: fieldError.Field(),
+				ErrorMsg:   fieldError.Error(),
+			}
+
+			structNamespace := fieldError.StructNamespace()
+			before, _, found := strings.Cut(structNamespace, ".")
+			if found {
+				originalTag := getObjectTagByFieldName(value, before)
+				if len(originalTag) > 0 {
+					formErrField.ErrorField = originalTag
+				}
+			}
+			errFields = append(errFields, formErrField)
+		}
+
+		if len(errFields) > 0 {
+			return errFields, xerrors.New("Request format error")
+		}
+
+		return nil, err
+	}
+	return nil, nil
 }
 
 func Sanitizer(fl validator.FieldLevel) bool {
@@ -68,4 +102,25 @@ func Sanitizer(fl validator.FieldLevel) bool {
 		return field.IsValid() && field.Interface() != reflect.Zero(field.Type()).Interface()
 
 	}
+}
+
+func getObjectTagByFieldName(obj any, fieldName string) (tag string) {
+	defer func() {
+		if err := recover(); err != nil {
+			slog.Error("", err)
+		}
+	}()
+
+	objT := reflect.TypeOf(obj)
+	objT = objT.Elem()
+
+	structField, exists := objT.FieldByName(fieldName)
+	if !exists {
+		return ""
+	}
+	tag = structField.Tag.Get("json")
+	if len(tag) == 0 {
+		return structField.Tag.Get("form")
+	}
+	return tag
 }

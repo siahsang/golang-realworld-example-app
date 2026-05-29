@@ -19,24 +19,21 @@ func HandleResponse(ctx *gin.Context, data any, err error) {
 	}
 
 	var appError *myblogError.AppError
-	if !errors.As(err, appError) {
+	if !errors.As(err, &appError) {
 		slog.Error("http_handle HandleResponse fail, %s", err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errorResponse(ctx, nil, &myblogError.AppError{
+			Code:         http.StatusInternalServerError,
+			ErrorMessage: "Internal server error",
+			ErrorStack:   err,
+		})
 		return
 	}
 
-	if appError.Code != 0 {
-		errorResponse(ctx, appError.Code, nil, appError)
-		return
-	}
-
-	if data != nil {
-		ctx.JSON(200, data)
-	}
+	errorResponse(ctx, nil, appError)
 }
 
-func BindAndCheck(ctx *gin.Context, ob any) bool {
-	if err := ctx.ShouldBind(ob); err != nil {
+func BindAndCheck(ctx *gin.Context, data any) bool {
+	if err := ctx.ShouldBind(data); err != nil {
 		slog.Error("http_handle BindAndCheck fail, %s", err.Error())
 		appError := myblogError.AppError{
 			Code:         http.StatusBadRequest,
@@ -48,13 +45,21 @@ func BindAndCheck(ctx *gin.Context, ob any) bool {
 	}
 
 	// do validation
-
-	validator.GetValidator()
+	errFields, err := validator.GetValidator().Check(data)
+	if err != nil {
+		appError := myblogError.AppError{
+			Code:         http.StatusBadRequest,
+			ErrorMessage: "Invalid request payload",
+			ErrorStack:   err,
+		}
+		HandleResponse(ctx, errFields, appError)
+		return true
+	}
 
 	return false
 }
 
-func errorResponse(ctx *gin.Context, status int, headers http.Header, appError *myblogError.AppError) {
+func errorResponse(ctx *gin.Context, headers http.Header, appError *myblogError.AppError) {
 	errorDetails := map[string]any{}
 
 	if appError.ErrorMessage != "" {
@@ -78,5 +83,5 @@ func errorResponse(ctx *gin.Context, status int, headers http.Header, appError *
 
 	slog.LogAttrs(ctx, slog.LevelError, "Error in handling request", attrs...)
 	ctx.BindHeader(headers)
-	ctx.JSON(status, errorDetails)
+	ctx.JSON(appError.Code, errorDetails)
 }

@@ -6,27 +6,26 @@ import "github.com/julienschmidt/httprouter"
 func (app *application) routes() http.Handler {
 	router := httprouter.New()
 
-	router.NotFound = http.HandlerFunc(app.notFoundResponse)
-
 	// Not require authentication for these routes
-	router.HandlerFunc(http.MethodPost, "/api/users", app.createUser)
-	router.HandlerFunc(http.MethodPost, "/api/users/login", app.login)
-	router.GET("/api/profiles/:username", app.getProfile)
-	router.HandlerFunc(http.MethodGet, "/api/articles", app.getArticles)
-	router.HandlerFunc(http.MethodGet, "/api/articles/:slug/comments", app.getComments)
-	router.HandlerFunc(http.MethodGet, "/api/tags", app.getTagList)
+	//router.HandlerFunc(http.MethodPost, "/api/users", app.createUser)
+	//router.HandlerFunc(http.MethodPost, "/api/users/login", app.login)
+	//router.GET("/api/profiles/:username", app.getProfile)
+	//router.HandlerFunc(http.MethodGet, "/api/articles", app.getArticles)
+	//router.HandlerFunc(http.MethodGet, "/api/articles/:slug/comments", app.getComments)
+	//router.HandlerFunc(http.MethodGet, "/api/tags", app.getTagList)
 
 	// Require authentication for these routes
-	router.HandlerFunc(http.MethodPut, "/api/user", app.requireAuthenticatedUser(app.updateUser))
-	router.HandlerFunc(http.MethodGet, "/api/user", app.requireAuthenticatedUser(app.getUser))
-	router.Handler(http.MethodPost, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.followUser))
-	router.Handler(http.MethodDelete, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.unfollowUser))
-	router.Handler(http.MethodPost, "/api/articles", app.requireAuthenticatedUser(app.createArticle))
-	router.Handler(http.MethodPut, "/api/articles/:slug", app.requireAuthenticatedUser(app.updateArticle))
-	router.Handler(http.MethodPost, "/api/articles/:slug/comments", app.requireAuthenticatedUser(app.createComment))
-	router.Handler(http.MethodDelete, "/api/articles/:slug/comments/:id", app.requireAuthenticatedUser(app.deleteComment))
-	router.Handler(http.MethodPost, "/api/articles/:slug/favorite", app.requireAuthenticatedUser(app.favouriteArticle))
-	router.Handler(http.MethodDelete, "/api/articles/:slug/favorite", app.requireAuthenticatedUser(app.unfavouriteArticle))
+	//router.HandlerFunc(http.MethodPut, "/api/user", app.requireAuthenticatedUser(app.updateUser))
+	//router.HandlerFunc(http.MethodGet, "/api/user", app.requireAuthenticatedUser(app.getUser))
+	//router.Handler(http.MethodPost, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.followUser))
+	//router.Handler(http.MethodDelete, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.unfollowUser))
+	//router.Handler(http.MethodPost, "/api/articles", app.requireAuthenticatedUser(app.createArticle))
+	//router.Handler(http.MethodPut, "/api/articles/:slug", app.requireAuthenticatedUser(app.updateArticle))
+	//router.Handler(http.MethodPost, "/api/articles/:slug/comments", app.requireAuthenticatedUser(app.createComment))
+	//router.Handler(http.MethodDelete, "/api/articles/:slug/comments/:id", app.requireAuthenticatedUser(app.deleteComment))
+	//router.Handler(http.MethodPost, "/api/articles/:slug/favorite", app.requireAuthenticatedUser(app.favouriteArticle))
+	//router.Handler(http.MethodDelete, "/api/articles/:slug/favorite", app.requireAuthenticatedUser(app.unfavouriteArticle))
 
-	return app.recoverPanic(app.authenticate(router))
+	//return app.recoverPanic(app.authenticate(router))
+	return router
 }

@@ -8,16 +8,26 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
+	errors2 "github.com/siahsang/blog/internal/errors"
 	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/schema"
+	"github.com/siahsang/blog/internal/utils/config"
 )
 
 type UserController struct {
-	core *core.Core
-	log  *slog.Logger
+	core   *core.Core
+	log    *slog.Logger
+	config *config.Config
+}
+
+func NewUserController(core *core.Core, log *slog.Logger, config *config.Config) *UserController {
+	return &UserController{
+		core:   core,
+		log:    log,
+		config: config,
+	}
 }
 
 //func (u *UserController) Login(ctx *gin.Context) {
@@ -105,51 +115,44 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	v := validator.New()
-	checkEmail(v, user.Email)
-
-	// check username
-	v.CheckNotBlank(user.Username, "username", "must be provided")
-	v.Check(len(user.Username) >= 5, "username", "must be at least 5 characters long")
-
-	// check PlaintextPassword
-	v.CheckNotBlank(user.PlaintextPassword, "plaintext password", "must be provided")
-	v.Check(len(user.PlaintextPassword) >= 8, "plaintext password", "must be at least 8 characters long")
-
-	// check password
-	v.CheckNotBlank(string(user.Password), "password", "must be provided")
-
-	if !v.IsValid() {
-		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-		return
-	}
-
-	err := u.core.CreateNewUser(r.Context(), user)
+	err := u.core.CreateNewUser(ctx, user)
 	if err != nil {
 		switch {
 		case errors.Is(err, core.ErrDuplicateUsername):
-			v.AddError("email", "Email address is already in use")
-			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
+			handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code:         http.StatusBadRequest,
+				ErrorStack:   err,
+				ErrorMessage: "Email address is already in use",
+				ErrorDetails: map[string]string{"email": "Email address is already in use"},
+			})
 			return
 		case errors.Is(err, core.ErrDuplicateEmail):
-			v.AddError("username", "Username is already in use")
-			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
+			handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code:         http.StatusBadRequest,
+				ErrorStack:   err,
+				ErrorMessage: "Username is already in use",
+				ErrorDetails: map[string]string{"username": "Username is already in use"},
+			})
+
 			return
 		default:
-			app.internalErrorResponse(w, r, err)
+			handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code:       http.StatusInternalServerError,
+				ErrorStack: err,
+			})
 			return
 		}
 	}
 
-	token, err := user.GenerateToken(time.Hour*24*1, app.config.JWTSecret)
+	token, err := user.GenerateToken(time.Hour*24*1, u.config.JWTSecret)
 	user.Token = token
 	if err != nil {
-		app.internalErrorResponse(w, r, err)
+		handler.HandleResponse(ctx, nil, &errors2.AppError{
+			Code:       http.StatusInternalServerError,
+			ErrorStack: err,
+		})
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusAccepted, userResponse(user), nil); err != nil {
-		app.internalErrorResponse(w, r, err)
-	}
-
+	handler.HandleResponse(ctx, map[string]any{"user": user}, nil)
 }

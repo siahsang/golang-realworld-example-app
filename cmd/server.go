@@ -15,7 +15,9 @@ import (
 
 func (app *application) serve() error {
 
-	ginEngine := server.NewHttpServer(true, app.uiRouter, app.uiConfig)
+	ginEngine := server.NewHttpServer(
+		true, app.uiRouter, app.uiConfig, app.blogAPIRouter,
+	)
 
 	srv := &http.Server{
 		Addr:         ":9091",
