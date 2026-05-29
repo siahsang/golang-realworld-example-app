@@ -17,16 +17,18 @@ import (
 )
 
 type UserController struct {
-	core   *core.Core
-	log    *slog.Logger
-	config *config.Config
+	core    *core.Core
+	log     *slog.Logger
+	config  *config.Config
+	handler *handler.Handler
 }
 
 func NewUserController(core *core.Core, log *slog.Logger, config *config.Config) *UserController {
 	return &UserController{
-		core:   core,
-		log:    log,
-		config: config,
+		core:    core,
+		log:     log,
+		config:  config,
+		handler: handler.NewHandler(log),
 	}
 }
 
@@ -97,7 +99,7 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 
 	req := &schema.UserRegisterReq{}
 
-	if handler.BindAndCheck(ctx, req) {
+	if u.handler.BindAndCheck(ctx, req) {
 		return
 	}
 
@@ -111,7 +113,7 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 	user.Username = strings.TrimSpace(user.Username)
 
 	if err := user.SetPassword(req.Password); err != nil {
-		handler.HandleResponse(ctx, nil, err)
+		u.handler.HandleResponse(ctx, nil, err)
 		return
 	}
 
@@ -119,24 +121,24 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, core.ErrDuplicateUsername):
-			handler.HandleResponse(ctx, nil, &errors2.AppError{
-				Code:         http.StatusBadRequest,
-				ErrorStack:   err,
-				ErrorMessage: "Email address is already in use",
-				ErrorDetails: map[string]string{"email": "Email address is already in use"},
-			})
-			return
-		case errors.Is(err, core.ErrDuplicateEmail):
-			handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
 				Code:         http.StatusBadRequest,
 				ErrorStack:   err,
 				ErrorMessage: "Username is already in use",
 				ErrorDetails: map[string]string{"username": "Username is already in use"},
 			})
+			return
+		case errors.Is(err, core.ErrDuplicateEmail):
+			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code:         http.StatusBadRequest,
+				ErrorStack:   err,
+				ErrorMessage: "Email address is already in use",
+				ErrorDetails: map[string]string{"email": "Email address is already in use"},
+			})
 
 			return
 		default:
-			handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
 				Code:       http.StatusInternalServerError,
 				ErrorStack: err,
 			})
@@ -145,14 +147,14 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 	}
 
 	token, err := user.GenerateToken(time.Hour*24*1, u.config.JWTSecret)
-	user.Token = token
 	if err != nil {
-		handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
 			Code:       http.StatusInternalServerError,
 			ErrorStack: err,
 		})
 		return
 	}
+	user.Token = token
 
-	handler.HandleResponse(ctx, map[string]any{"user": user}, nil)
+	u.handler.HandleResponse(ctx, map[string]any{"user": user}, nil)
 }

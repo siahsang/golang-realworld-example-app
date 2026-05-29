@@ -14,6 +14,7 @@ import (
 
 type Validator struct {
 	Validate *validator.Validate
+	logger   *slog.Logger
 }
 
 type FormErrorField struct {
@@ -24,7 +25,7 @@ type FormErrorField struct {
 var instance *Validator
 var once sync.Once
 
-func GetValidator() *Validator {
+func NewValidator(logger *slog.Logger) *Validator {
 	once.Do(func() {
 		myValidator := validator.New(validator.WithRequiredStructEnabled())
 		myValidator.RegisterValidation("sanitizer", Sanitizer)
@@ -43,6 +44,7 @@ func GetValidator() *Validator {
 
 		instance = &Validator{
 			Validate: myValidator,
+			logger:   logger,
 		}
 	})
 
@@ -54,7 +56,7 @@ func (v *Validator) Check(value any) (errFields []*FormErrorField, err error) {
 	if err != nil {
 		var validationErrors validator.ValidationErrors
 		if !errors.As(err, &validationErrors) {
-			slog.Error("validation check exception", "error", err)
+			v.logger.Error("validation check exception", "error", err)
 			return nil, xerrors.Newf("validation check exception: %w", err)
 		}
 
@@ -107,7 +109,7 @@ func Sanitizer(fl validator.FieldLevel) bool {
 func getObjectTagByFieldName(obj any, fieldName string) (tag string) {
 	defer func() {
 		if err := recover(); err != nil {
-			slog.Error("", err)
+			slog.Error("panic in getObjectTagByFieldName", "error", err)
 		}
 	}()
 

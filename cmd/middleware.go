@@ -1,5 +1,14 @@
 package main
 
+//import (
+//	"errors"
+//	"net/http"
+//	"strings"
+//
+//	"github.com/mdobak/go-xerrors"
+//	"github.com/siahsang/blog/internal/core"
+//)
+//
 //func (app *application) authenticate(next http.Handler) http.Handler {
 //	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 //		w.Header().Add("Vary", "Authorization")
