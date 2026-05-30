@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"log/slog"
 	"os"
@@ -35,8 +34,16 @@ type application struct {
 func main() {
 	logger := configLogger()
 	logger.Info("Starting application...")
-	db, err := openDBConnection(logger)
-	cfg := &config.Config{}
+	
+	// Read database connection string from environment variable
+	dbDSN := os.Getenv("DB_DSN")
+	if dbDSN == "" {
+		// Fallback to default connection string
+		dbDSN = "postgres://postgres:postgres@localhost/myblog?sslmode=disable"
+		logger.Warn("DB_DSN environment variable not set, using default connection string")
+	}
+	
+	db, err := databaseutils.OpenDBConnection(logger, dbDSN)
 	if err != nil {
 		logger.Error("Errors opening database connection", "error", err)
 		os.Exit(1)
@@ -49,6 +56,21 @@ func main() {
 		}
 	}()
 
+	app, err := newApplication(db, logger)
+	if err != nil {
+		logger.Error("Error creating application", "error", err)
+		os.Exit(1)
+	}
+
+	if err := app.serve(); err != nil {
+		logger.Error("Error in starting server", "error", err)
+		os.Exit(1)
+	}
+}
+
+// newApplication creates and configures a new application instance
+func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
+	cfg := &config.Config{}
 	cfg.JWTSecret = os.Getenv("JWT_SECRET")
 
 	uiConfig := &server.UIConfig{
@@ -61,7 +83,7 @@ func main() {
 		core,
 		logger, cfg)
 
-	app := application{
+	app := &application{
 		uiConfig:      uiConfig,
 		uiRouter:      uiRouter,
 		blogAPIRouter: router.NewBlogAPIRouter(userController),
@@ -74,10 +96,7 @@ func main() {
 		config:        cfg,
 	}
 
-	if err := app.serve(); err != nil {
-		logger.Error("Error in starting server", "error", err)
-		os.Exit(1)
-	}
+	return app, nil
 }
 
 func configLogger() *slog.Logger {
@@ -92,29 +111,4 @@ func configLogger() *slog.Logger {
 
 	logger := slog.New(handler)
 	return logger
-}
-
-func openDBConnection(logger *slog.Logger) (*sql.DB, error) {
-	db, err := sql.Open("postgres", "postgres://postgres:postgres@localhost/myblog?sslmode=disable")
-	if err != nil {
-		return nil, err
-	}
-
-	db.SetMaxIdleConns(10)
-
-	duration, err := time.ParseDuration("10s")
-	if err != nil {
-		return nil, err
-	}
-
-	db.SetConnMaxIdleTime(duration)
-
-	context.WithTimeout(context.Background(), 5*time.Second)
-	err = db.PingContext(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("Database connection established successfully")
-
-	return db, nil
 }
