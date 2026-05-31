@@ -2,6 +2,7 @@ package test_utils
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -157,7 +158,7 @@ func RunMigrations(db *sql.DB, migrationsPath string) error {
 		return fmt.Errorf("could not create migrate instance: %w", err)
 	}
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("could not run migrations: %w", err)
 	}
 
