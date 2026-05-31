@@ -68,3 +68,11 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 func GetTestDB() *sql.DB {
 	return testDB
 }
+
+// CreateTestLogger creates a logger for testing
+func CreateTestLogger() *slog.Logger {
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError, // Only log errors in tests to keep output clean
+	})
+	return slog.New(handler)
+}
