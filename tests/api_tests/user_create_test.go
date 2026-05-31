@@ -255,7 +255,7 @@ func TestCreateUser(t *testing.T) {
 // TestCreateUserVerifyDatabase verifies that user data is correctly stored in database
 func TestCreateUserVerifyDatabase(t *testing.T) {
 	// Reset database before test
-	defer test_utils.ResetTestDB()
+	test_utils.ResetTestDB()
 
 	// Get test database and create test application
 	db := test_utils.GetTestDB()
