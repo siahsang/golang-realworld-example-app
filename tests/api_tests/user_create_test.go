@@ -1,280 +1,209 @@
 package api_tests
 
 import (
-	"bytes"
-	"encoding/json"
+	"database/sql"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/siahsang/blog/internal/server"
 	"github.com/siahsang/blog/tests/test_utils"
 )
 
-func TestCreateUser(t *testing.T) {
-	// Reset database before test
-	test_utils.ResetTestDB()
+func TestCreateUser_Success(t *testing.T) {
+	defer test_utils.ResetTestDB()
 
-	// Get test database and create test application
-	db := test_utils.GetTestDB()
-	logger := test_utils.CreateTestLogger()
-	app, err := test_utils.NewTestApplication(db, logger)
-	if err != nil {
-		t.Fatalf("Failed to create test application: %v", err)
+	client := test_utils.NewTestClient(t)
+
+	payload := map[string]interface{}{
+		"user": map[string]string{
+			"email":    "test@example.com",
+			"username": "testuser",
+			"password": "password123",
+		},
 	}
 
-	// Create HTTP server with test application
-	ginEngine := server.NewHttpServer(
-		true,
-		app.UIRouter,
-		app.UIConfig,
-		app.BlogAPIRouter,
-		app.Logger,
-	)
+	w := client.Post("/api/users", payload)
 
-	// Test case 1: Successful user creation
-	t.Run("successful user creation", func(t *testing.T) {
-		payload := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "test@example.com",
-				"username": "testuser",
-				"password": "password123",
-			},
-		}
+	test_utils.AssertStatus(t, w, http.StatusOK)
 
-		body, _ := json.Marshal(payload)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
+	var response map[string]interface{}
+	test_utils.ParseJSON(t, w, &response)
 
-		w := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w, req)
+	user, ok := response["user"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Response does not contain user object")
+	}
 
-		if w.Code != http.StatusOK {
-			t.Errorf("Expected status 200, got %d. Body: %s", w.Code, w.Body.String())
-		}
+	if user["email"] != "test@example.com" {
+		t.Errorf("Expected email 'test@example.com', got '%v'", user["email"])
+	}
 
-		var response map[string]interface{}
-		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-			t.Fatalf("Failed to parse response: %v", err)
-		}
+	if user["username"] != "testuser" {
+		t.Errorf("Expected username 'testuser', got '%v'", user["username"])
+	}
 
-		user, ok := response["user"].(map[string]interface{})
-		if !ok {
-			t.Fatal("Response does not contain user object")
-		}
-
-		if user["email"] != "test@example.com" {
-			t.Errorf("Expected email 'test@example.com', got '%v'", user["email"])
-		}
-
-		if user["username"] != "testuser" {
-			t.Errorf("Expected username 'testuser', got '%v'", user["username"])
-		}
-
-		if user["token"] == nil || user["token"] == "" {
-			t.Error("Expected token to be present in response")
-		}
-	})
-
-	// Test case 2: Duplicate email
-	t.Run("duplicate email", func(t *testing.T) {
-		// First, create a user
-		payload1 := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "duplicate@example.com",
-				"username": "user1",
-				"password": "password123",
-			},
-		}
-		body1, _ := json.Marshal(payload1)
-		req1 := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body1))
-		req1.Header.Set("Content-Type", "application/json")
-		w1 := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w1, req1)
-
-		if w1.Code != http.StatusOK {
-			t.Fatalf("First user creation failed: %d", w1.Code)
-		}
-
-		// Try to create another user with same email
-		payload2 := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "duplicate@example.com",
-				"username": "user2",
-				"password": "password123",
-			},
-		}
-		body2, _ := json.Marshal(payload2)
-		req2 := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body2))
-		req2.Header.Set("Content-Type", "application/json")
-		w2 := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w2, req2)
-
-		// Note: Currently returns 500 due to error wrapping, but constraint is enforced
-		if w2.Code != http.StatusBadRequest && w2.Code != http.StatusInternalServerError {
-			t.Errorf("Expected status 400 or 500 for duplicate email, got %d", w2.Code)
-		}
-	})
-
-	// Test case 3: Duplicate username
-	t.Run("duplicate username", func(t *testing.T) {
-		// First, create a user
-		payload1 := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "user3@example.com",
-				"username": "duplicateuser",
-				"password": "password123",
-			},
-		}
-		body1, _ := json.Marshal(payload1)
-		req1 := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body1))
-		req1.Header.Set("Content-Type", "application/json")
-		w1 := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w1, req1)
-
-		if w1.Code != http.StatusOK {
-			t.Fatalf("First user creation failed: %d", w1.Code)
-		}
-
-		// Try to create another user with same username
-		payload2 := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "user4@example.com",
-				"username": "duplicateuser",
-				"password": "password123",
-			},
-		}
-		body2, _ := json.Marshal(payload2)
-		req2 := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body2))
-		req2.Header.Set("Content-Type", "application/json")
-		w2 := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w2, req2)
-
-		// Note: Currently returns 500 due to error wrapping, but constraint is enforced
-		if w2.Code != http.StatusBadRequest && w2.Code != http.StatusInternalServerError {
-			t.Errorf("Expected status 400 or 500 for duplicate username, got %d", w2.Code)
-		}
-	})
-
-	// Test case 4: Invalid email format
-	t.Run("invalid email format", func(t *testing.T) {
-		payload := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "invalid-email",
-				"username": "testuser5",
-				"password": "password123",
-			},
-		}
-
-		body, _ := json.Marshal(payload)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("Expected status 400 for invalid email, got %d", w.Code)
-		}
-	})
-
-	// Test case 5: Password too short
-	t.Run("password too short", func(t *testing.T) {
-		payload := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "user6@example.com",
-				"username": "testuser6",
-				"password": "short",
-			},
-		}
-
-		body, _ := json.Marshal(payload)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("Expected status 400 for short password, got %d", w.Code)
-		}
-	})
-
-	// Test case 6: Username too short
-	t.Run("username too short", func(t *testing.T) {
-		payload := map[string]interface{}{
-			"user": map[string]string{
-				"email":    "user7@example.com",
-				"username": "usr",
-				"password": "password123",
-			},
-		}
-
-		body, _ := json.Marshal(payload)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("Expected status 400 for short username, got %d", w.Code)
-		}
-	})
-
-	// Test case 7: Missing required fields
-	t.Run("missing email", func(t *testing.T) {
-		payload := map[string]interface{}{
-			"user": map[string]string{
-				"username": "testuser8",
-				"password": "password123",
-			},
-		}
-
-		body, _ := json.Marshal(payload)
-		req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("Expected status 400 for missing email, got %d", w.Code)
-		}
-	})
-
-	// Test case 8: Empty request body
-	t.Run("empty request body", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer([]byte("{}")))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		ginEngine.ServeHTTP(w, req)
-
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("Expected status 400 for empty body, got %d", w.Code)
-		}
-	})
+	if user["token"] == nil || user["token"] == "" {
+		t.Error("Expected token to be present in response")
+	}
 }
 
-// TestCreateUserVerifyDatabase verifies that user data is correctly stored in database
-func TestCreateUserVerifyDatabase(t *testing.T) {
-	// Reset database before test
-	test_utils.ResetTestDB()
+func TestCreateUser_ValidationErrors(t *testing.T) {
+	defer test_utils.ResetTestDB()
 
-	// Get test database and create test application
-	db := test_utils.GetTestDB()
-	logger := test_utils.CreateTestLogger()
-	app, err := test_utils.NewTestApplication(db, logger)
-	if err != nil {
-		t.Fatalf("Failed to create test application: %v", err)
+	client := test_utils.NewTestClient(t)
+
+	tests := []struct {
+		name       string
+		payload    map[string]interface{}
+		wantStatus int
+	}{
+		{
+			name: "invalid email format",
+			payload: map[string]interface{}{
+				"user": map[string]string{
+					"email":    "invalid-email",
+					"username": "testuser",
+					"password": "password123",
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "password too short",
+			payload: map[string]interface{}{
+				"user": map[string]string{
+					"email":    "user@example.com",
+					"username": "testuser",
+					"password": "short",
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "username too short",
+			payload: map[string]interface{}{
+				"user": map[string]string{
+					"email":    "user@example.com",
+					"username": "usr",
+					"password": "password123",
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "missing email",
+			payload: map[string]interface{}{
+				"user": map[string]string{
+					"username": "testuser",
+					"password": "password123",
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "missing username",
+			payload: map[string]interface{}{
+				"user": map[string]string{
+					"email":    "user@example.com",
+					"password": "password123",
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "missing password",
+			payload: map[string]interface{}{
+				"user": map[string]string{
+					"email":    "user@example.com",
+					"username": "testuser",
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "empty request body",
+			payload:    map[string]interface{}{},
+			wantStatus: http.StatusBadRequest,
+		},
 	}
 
-	// Create HTTP server
-	ginEngine := server.NewHttpServer(
-		true,
-		app.UIRouter,
-		app.UIConfig,
-		app.BlogAPIRouter,
-		app.Logger,
-	)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := client.Post("/api/users", tt.payload)
+			test_utils.AssertStatus(t, w, tt.wantStatus)
+		})
+	}
+}
 
-	// Create a user via API
+func TestCreateUser_DuplicateEmail(t *testing.T) {
+	defer test_utils.ResetTestDB()
+
+	client := test_utils.NewTestClient(t)
+
+	// Create first user
+	payload1 := map[string]interface{}{
+		"user": map[string]string{
+			"email":    "duplicate@example.com",
+			"username": "user1",
+			"password": "password123",
+		},
+	}
+	w1 := client.Post("/api/users", payload1)
+	test_utils.AssertStatus(t, w1, http.StatusOK)
+
+	// Try to create another user with same email
+	payload2 := map[string]interface{}{
+		"user": map[string]string{
+			"email":    "duplicate@example.com",
+			"username": "user2",
+			"password": "password123",
+		},
+	}
+	w2 := client.Post("/api/users", payload2)
+
+	// Should fail with 400 or 500 (constraint violation)
+	if w2.Code != http.StatusBadRequest && w2.Code != http.StatusInternalServerError {
+		t.Errorf("Expected status 400 or 500 for duplicate email, got %d", w2.Code)
+	}
+}
+
+func TestCreateUser_DuplicateUsername(t *testing.T) {
+	defer test_utils.ResetTestDB()
+
+	client := test_utils.NewTestClient(t)
+
+	// Create first user
+	payload1 := map[string]interface{}{
+		"user": map[string]string{
+			"email":    "user1@example.com",
+			"username": "duplicateuser",
+			"password": "password123",
+		},
+	}
+	w1 := client.Post("/api/users", payload1)
+	test_utils.AssertStatus(t, w1, http.StatusOK)
+
+	// Try to create another user with same username
+	payload2 := map[string]interface{}{
+		"user": map[string]string{
+			"email":    "user2@example.com",
+			"username": "duplicateuser",
+			"password": "password123",
+		},
+	}
+	w2 := client.Post("/api/users", payload2)
+
+	// Should fail with 400 or 500 (constraint violation)
+	if w2.Code != http.StatusBadRequest && w2.Code != http.StatusInternalServerError {
+		t.Errorf("Expected status 400 or 500 for duplicate username, got %d", w2.Code)
+	}
+}
+
+func TestCreateUser_DatabaseVerification(t *testing.T) {
+	defer test_utils.ResetTestDB()
+
+	client := test_utils.NewTestClient(t)
+	db := test_utils.GetTestDB()
+
 	payload := map[string]interface{}{
 		"user": map[string]string{
 			"email":    "dbtest@example.com",
@@ -283,51 +212,74 @@ func TestCreateUserVerifyDatabase(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(payload)
-	req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	ginEngine.ServeHTTP(w, req)
+	w := client.Post("/api/users", payload)
+	test_utils.AssertStatus(t, w, http.StatusOK)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Failed to create user: %d - %s", w.Code, w.Body.String())
-	}
-
-	// Verify user exists in database
+	// Verify user count
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", "dbtest@example.com").Scan(&count)
+	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", "dbtest@example.com").Scan(&count)
 	if err != nil {
 		t.Fatalf("Failed to query database: %v", err)
 	}
-
 	if count != 1 {
 		t.Errorf("Expected 1 user in database, got %d", count)
 	}
 
-	// Verify username is stored correctly
+	// Verify username
 	var username string
 	err = db.QueryRow("SELECT username FROM users WHERE email = $1", "dbtest@example.com").Scan(&username)
 	if err != nil {
 		t.Fatalf("Failed to get username from database: %v", err)
 	}
-
 	if username != "dbtestuser" {
 		t.Errorf("Expected username 'dbtestuser', got '%s'", username)
 	}
 
-	// Verify password is hashed (not stored as plaintext)
+	// Verify password is hashed
 	var passwordBytes []byte
 	err = db.QueryRow("SELECT password FROM users WHERE email = $1", "dbtest@example.com").Scan(&passwordBytes)
 	if err != nil {
 		t.Fatalf("Failed to get password from database: %v", err)
 	}
 
-	passwordHash := string(passwordBytes)
-	if passwordHash == "password123" {
+	if string(passwordBytes) == "password123" {
 		t.Error("Password is stored as plaintext, should be hashed")
 	}
-
 	if len(passwordBytes) == 0 {
 		t.Error("Password should not be empty")
+	}
+}
+
+// Helper function to create a test user and return the response
+func createTestUser(t *testing.T, client *test_utils.TestClient, email, username, password string) map[string]interface{} {
+	t.Helper()
+
+	payload := map[string]interface{}{
+		"user": map[string]string{
+			"email":    email,
+			"username": username,
+			"password": password,
+		},
+	}
+
+	w := client.Post("/api/users", payload)
+	test_utils.AssertStatus(t, w, http.StatusOK)
+
+	var response map[string]interface{}
+	test_utils.ParseJSON(t, w, &response)
+	return response
+}
+
+// Helper to verify user exists in database
+func verifyUserInDB(t *testing.T, db *sql.DB, email string) {
+	t.Helper()
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", email).Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to query database: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("Expected 1 user with email %s, got %d", email, count)
 	}
 }

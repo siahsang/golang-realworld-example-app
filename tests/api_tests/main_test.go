@@ -1,4 +1,4 @@
-package tests
+package api_tests
 
 import (
 	"log/slog"
