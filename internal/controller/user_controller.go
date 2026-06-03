@@ -115,7 +115,6 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 				Code:         http.StatusBadRequest,
 				ErrorStack:   err,
 				ErrorMessage: "Username is already in use",
-				ErrorDetails:  map[string]string{"username": "Username is already in use"},
 			})
 			return
 		case errors.Is(err, core.ErrDuplicateEmail):
@@ -123,7 +122,6 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 				Code:         http.StatusBadRequest,
 				ErrorStack:   err,
 				ErrorMessage: "Email address is already in use",
-				ErrorDetails: map[string]string{"email": "Email address is already in use"},
 			})
 
 			return
