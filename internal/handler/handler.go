@@ -63,8 +63,9 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "Invalid request payload",
 			ErrorStack:   err,
+			ErrorDetails: errFields,
 		}
-		h.HandleResponse(ctx, errFields, appError)
+		h.HandleResponse(ctx, nil, appError)
 		return true
 	}
 
@@ -73,10 +74,6 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 
 func (h *Handler) errorResponse(ctx *gin.Context, headers http.Header, appError *myblogError.AppError) {
 	errorDetails := map[string]any{}
-
-	if appError.ErrorMessage != "" {
-		errorDetails["errorMessage"] = appError.ErrorMessage
-	}
 
 	if appError.ErrorDetails != nil {
 		errorDetails["errorDetails"] = appError.ErrorDetails
@@ -89,11 +86,16 @@ func (h *Handler) errorResponse(ctx *gin.Context, headers http.Header, appError 
 		attrs = append(attrs, slog.String("stack", xerrors.Sprint(appError.ErrorStack)))
 	}
 
-	for key, valueData := range appError.ErrorDetails {
-		attrs = append(attrs, slog.Any(key, valueData))
+	for _, valueData := range appError.ErrorDetails {
+		attrs = append(attrs, slog.Any(valueData.ErrorField, valueData.ErrorMsg))
 	}
 
 	h.logger.LogAttrs(ctx, slog.LevelError, "Error in handling request", attrs...)
-	ctx.BindHeader(headers)
+	for key, values := range headers {
+		for _, value := range values {
+			ctx.Writer.Header().Add(key, value)
+		}
+	}
+
 	ctx.JSON(appError.Code, errorDetails)
 }

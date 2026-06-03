@@ -1,10 +1,12 @@
 package errors
 
+import "github.com/siahsang/blog/internal/validator"
+
 type AppError struct {
 	Code int
 	ErrorStack   error
 	ErrorMessage string
-	ErrorDetails map[string]string
+	ErrorDetails  []*validator.FormErrorField
 }
 
 

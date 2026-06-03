@@ -39,7 +39,7 @@ func NewTestClient(t *testing.T) *TestClient {
 }
 
 // Post makes a POST request to the given path with the given body
-func (c *TestClient) Post(path string, body interface{}) *httptest.ResponseRecorder {
+func (c *TestClient) Post(path string, body any) *httptest.ResponseRecorder {
 	jsonBody, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")

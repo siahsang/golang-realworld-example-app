@@ -1,14 +1,13 @@
 package schema
 
-type UserLoginPayloadReq struct {
+type UserLoginPayload struct {
 	Email    string `validate:"required,email,gt=2,lte=30" json:"email"`
 	Password string `validate:"required,gte=8,lte=30" json:"password"`
 }
 
-type UserRegisterPayloadReq struct {
-	UserLoginPayloadReq `json:"user" validate:"required"`
+type UserLoginPayloadReq struct {
+	UserLoginPayload `json:"user" validate:"required"`
 }
-
 
 type UserRegisterReqPayload struct {
 	Email    string `validate:"required,email,gt=2,lte=30" json:"email"`
@@ -19,4 +18,3 @@ type UserRegisterReqPayload struct {
 type UserRegisterReq struct {
 	UserRegisterReqPayload `json:"user"`
 }
-
