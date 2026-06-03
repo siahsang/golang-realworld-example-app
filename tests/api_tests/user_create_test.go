@@ -250,21 +250,6 @@ func TestCreateUser_DatabaseVerification(t *testing.T) {
 	}
 }
 
-func TestLoginUser_Success(t *testing.T) {
-	test_utils.ResetTestDB()
-	client := test_utils.NewTestClient(t)
-
-	createTestUser(t, client, "john@smith.com", "john1", "password123")
-	//w := client.Post("/api/users/login", map[string]any{
-	//	"user": map[string]string{
-	//		"email":    "john@smith.com",
-	//		"password": "password123",
-	//	},
-	//})
-	//
-	//test_utils.AssertStatus(t, w, http.StatusOK)
-}
-
 // Helper function to create a test user and return the response
 func createTestUser(t *testing.T, client *test_utils.TestClient, email, username, password string) map[string]interface{} {
 	t.Helper()
