@@ -60,11 +60,12 @@ func (u *UserController) Login(ctx *gin.Context) {
 			Code:       http.StatusInternalServerError,
 			ErrorStack: err,
 		})
+		return
 	}
 	if !match {
 		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
 			ErrorMessage: "Invalid credentials",
-			Code:       http.StatusInternalServerError,
+			Code:       http.StatusUnauthorized,
 			ErrorStack: err,
 		})
 
