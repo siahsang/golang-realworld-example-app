@@ -32,68 +32,57 @@ func NewUserController(core *core.Core, log *slog.Logger, config *config.Config)
 	}
 }
 
-//func (u *UserController) Login(ctx *gin.Context) {
-//
-//	req := &schema.UserRegisterPayloadReq{}
-//
-//	if err := app.readJSON(w, r, &loginUserRequest); err != nil {
-//		app.badRequestResponse(w, r, &AppError{
-//			ErrorMessage: err.Error(),
-//			ErrorStack:   err,
-//		})
-//		return
-//	}
-//
-//	v := validator.New()
-//
-//	// check email
-//	v.CheckNotBlank(loginUserRequest.Email, "email", "must be provided")
-//	v.CheckEmail(loginUserRequest.Email, "must be a valid email address")
-//
-//	// check password
-//	v.CheckNotBlank(loginUserRequest.Password, "password", "must be provided")
-//
-//	if !v.IsValid() {
-//		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-//		return
-//	}
-//
-//	user, err := app.core.GetUserByEmail(r.Context(), loginUserRequest.Email)
-//	if err != nil {
-//		switch {
-//		case errors.Is(err, core.NoRecordFound):
-//			app.badRequestResponse(w, r, &AppError{
-//				ErrorMessage: "Invalid credentials",
-//				ErrorStack:   err,
-//			})
-//			return
-//		default:
-//			app.internalErrorResponse(w, r, err)
-//			return
-//		}
-//	}
-//	match, err := user.IsPasswordMatch(loginUserRequest.Password)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//	}
-//	if !match {
-//		app.badRequestResponse(w, r, &AppError{
-//			ErrorMessage: "Invalid credentials",
-//		})
-//		return
-//	}
-//
-//	token, err := user.GenerateToken(time.Hour*24*1, app.config.JWTSecret)
-//	user.Token = token
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	if err := app.writeJSON(w, http.StatusAccepted, userResponse(user), nil); err != nil {
-//		app.internalErrorResponse(w, r, err)
-//	}
-//}
+func (u *UserController) Login(ctx *gin.Context) {
+
+	req := &schema.UserLoginPayloadReq{}
+
+	if u.handler.BindAndCheck(ctx, req) {
+		return
+	}
+
+	user, err := u.core.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		switch {
+		case errors.Is(err, core.NoRecordFound):
+			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code:       http.StatusBadRequest,
+				ErrorStack: err,
+			})
+			return
+		default:
+			u.handler.HandleResponse(ctx, nil, err)
+			return
+		}
+	}
+	match, err := user.IsPasswordMatch(req.Password)
+	if err != nil {
+		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			Code:       http.StatusInternalServerError,
+			ErrorStack: err,
+		})
+	}
+	if !match {
+		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			ErrorMessage: "Invalid credentials",
+			Code:       http.StatusInternalServerError,
+			ErrorStack: err,
+		})
+
+		return
+	}
+
+	token, err := user.GenerateToken(time.Hour*24*1, u.config.JWTSecret)
+	user.Token = token
+	if err != nil {
+		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			Code:       http.StatusInternalServerError,
+			ErrorStack: err,
+		})
+		return
+	}
+
+	u.handler.HandleResponse(ctx, map[string]any{"user": user}, nil)
+}
 
 func (u *UserController) CreateUser(ctx *gin.Context) {
 
