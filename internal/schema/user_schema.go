@@ -18,3 +18,7 @@ type UserRegisterReqPayload struct {
 type UserRegisterReq struct {
 	UserRegisterReqPayload `json:"user"`
 }
+
+type ProfileResponse struct {
+	Profile interface{} `json:"profile"`
+}

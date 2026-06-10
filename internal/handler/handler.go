@@ -73,10 +73,15 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 }
 
 func (h *Handler) errorResponse(ctx *gin.Context, headers http.Header, appError *myblogError.AppError) {
-	errorDetails := map[string]any{}
+	response := map[string]any{}
 
 	if appError.ErrorDetails != nil {
-		errorDetails["errorDetails"] = appError.ErrorDetails
+		// Group errors by field name to match RealWorld API spec
+		errorsByField := make(map[string][]string)
+		for _, fieldError := range appError.ErrorDetails {
+			errorsByField[fieldError.ErrorField] = append(errorsByField[fieldError.ErrorField], fieldError.ErrorMsg)
+		}
+		response["errors"] = errorsByField
 	}
 
 	var attrs []slog.Attr
@@ -97,5 +102,5 @@ func (h *Handler) errorResponse(ctx *gin.Context, headers http.Header, appError 
 		}
 	}
 
-	ctx.JSON(appError.Code, errorDetails)
+	ctx.JSON(appError.Code, response)
 }

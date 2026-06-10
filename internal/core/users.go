@@ -71,8 +71,8 @@ func (c *Core) GetUserByEmail(context context.Context, email string) (*auth.User
 
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return nil, xerrors.New(NoRecordFound)
+		case errors.Is(err, databaseutils.ErrNoRowsFound):
+			return nil, NoRecordFound
 		default:
 			return nil, xerrors.New(err)
 		}
@@ -106,8 +106,8 @@ func (c *Core) GetUserByUsername(context context.Context, username string) (*aut
 
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return nil, xerrors.New(NoRecordFound)
+		case errors.Is(err, databaseutils.ErrNoRowsFound):
+			return nil, NoRecordFound
 		default:
 			return nil, xerrors.New(err)
 		}
@@ -186,8 +186,8 @@ func (c *Core) UpdateUser(context context.Context, user *auth.User) (*auth.User,
 
 	if err != nil {
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return nil, xerrors.New(NoRecordFound)
+		case errors.Is(err, databaseutils.ErrNoRowsFound):
+			return nil, NoRecordFound
 		default:
 			return nil, xerrors.New(err)
 		}

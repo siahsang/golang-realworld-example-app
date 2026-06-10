@@ -161,34 +161,6 @@ package main
 //	}
 //}
 //
-//func (app *application) getProfile(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-//	username := strings.TrimSpace(ps.ByName("username"))
-//	if username == "" {
-//		app.badRequestResponse(w, r, &AppError{
-//			ErrorMessage: "Username is required",
-//		})
-//		return
-//	}
-//
-//	profile, err := app.core.GetProfileByUserName(r.Context(), username)
-//	if err != nil {
-//		switch {
-//		case errors.Is(err, core.NoRecordFound):
-//			app.badRequestResponse(w, r, &AppError{
-//				ErrorMessage: err.Error(),
-//				ErrorStack:   err,
-//			})
-//			return
-//		default:
-//			app.internalErrorResponse(w, r, err)
-//			return
-//		}
-//	}
-//
-//	if err := app.writeJSON(w, http.StatusOK, envelope{"profile": profile}, nil); err != nil {
-//		app.internalErrorResponse(w, r, err)
-//	}
-//}
 //
 //func (app *application) followUser(w http.ResponseWriter, r *http.Request) {
 //	parms := httprouter.ParamsFromContext(r.Context())

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/server"
 )
 
@@ -33,6 +34,9 @@ func NewTestClient(t *testing.T) *TestClient {
 		app.UIConfig,
 		app.BlogAPIRouter,
 		app.Logger,
+		*app.Config,
+		app.Core,
+		handler.NewHandler(app.Logger),
 	)
 
 	return &TestClient{Engine: engine}
@@ -79,7 +83,7 @@ func (c *TestClient) PostWithAuth(path string, body interface{}, token string) *
 	jsonBody, _ := json.Marshal(body)
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Token "+token)
 	w := httptest.NewRecorder()
 	c.Engine.ServeHTTP(w, req)
 	return w
@@ -88,7 +92,7 @@ func (c *TestClient) PostWithAuth(path string, body interface{}, token string) *
 // GetWithAuth makes a GET request with an Authorization header
 func (c *TestClient) GetWithAuth(path string, token string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Token "+token)
 	w := httptest.NewRecorder()
 	c.Engine.ServeHTTP(w, req)
 	return w
@@ -118,5 +122,13 @@ func AssertJSONField(t *testing.T, w *httptest.ResponseRecorder, field string, e
 
 	if response[field] != expected {
 		t.Errorf("Expected %s to be %v, got %v", field, expected, response[field])
+	}
+}
+
+// ParseJSONFromRecorder parses JSON response body into the given interface
+func ParseJSONFromRecorder(t *testing.T, w *httptest.ResponseRecorder, v any) {
+	t.Helper()
+	if err := json.Unmarshal(w.Body.Bytes(), v); err != nil {
+		t.Fatalf("Failed to parse JSON response: %v. Body: %s", err, w.Body.String())
 	}
 }

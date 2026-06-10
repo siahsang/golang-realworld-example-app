@@ -14,6 +14,7 @@ import (
 	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/schema"
 	"github.com/siahsang/blog/internal/utils/config"
+	"github.com/siahsang/blog/internal/validator"
 )
 
 type UserController struct {
@@ -65,8 +66,8 @@ func (u *UserController) Login(ctx *gin.Context) {
 	if !match {
 		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
 			ErrorMessage: "Invalid credentials",
-			Code:       http.StatusUnauthorized,
-			ErrorStack: err,
+			Code:         http.StatusUnauthorized,
+			ErrorStack:   err,
 		})
 
 		return
@@ -145,4 +146,49 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 	user.Token = token
 
 	u.handler.HandleResponse(ctx, map[string]any{"user": user}, nil)
+}
+
+func (u *UserController) GetProfile(ctx *gin.Context) {
+	username := strings.TrimSpace(ctx.Param("username"))
+
+	if username == "" {
+		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			Code: http.StatusBadRequest,
+			ErrorDetails: []*validator.FormErrorField{
+				{
+					ErrorField: "username",
+					ErrorMsg:   "username is required",
+				},
+			},
+		})
+		return
+	}
+
+	// Extract and validate Authorization header
+	user, err2 := auth.GetAuthenticatedUser(ctx)
+	var currentUserID *int64 = nil
+	if err2 == nil {
+		currentUserID = &user.ID
+	}
+	// Get profile from core
+	profile, err := u.core.GetProfileByUserName(ctx, username, currentUserID)
+	if err != nil {
+		// Check if error is NoRecordFound (check error message or wrapped error)
+		if errors.Is(err, core.NoRecordFound) {
+			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code: http.StatusNotFound,
+				ErrorDetails: []*validator.FormErrorField{
+					{
+						ErrorField: "body",
+						ErrorMsg:   "profile not found",
+					},
+				},
+			})
+			return
+		}
+		u.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	u.handler.HandleResponse(ctx, map[string]any{"profile": profile}, nil)
 }

@@ -2,12 +2,11 @@ package auth
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/mdobak/go-xerrors"
-	"github.com/siahsang/blog/internal/web"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -60,7 +59,7 @@ func (user *User) GenerateToken(duration time.Duration, JWTSecret string) (strin
 	return signedString, xerrors.New(err)
 }
 
-func (auth *Auth) Authenticate(tokenString string, JWTSecret string) (*UserClaim, error) {
+func ValidateToken(tokenString string, JWTSecret string) (*UserClaim, error) {
 	parsedToken, err := jwt.ParseWithClaims(tokenString, &UserClaim{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, xerrors.New("unexpected signing method")
@@ -83,8 +82,16 @@ func (auth *Auth) Authenticate(tokenString string, JWTSecret string) (*UserClaim
 	}
 }
 
-func (auth *Auth) GetAuthenticatedUser(r *http.Request) (*User, error) {
-	user, ok := web.GetValueFromContext[*User](r, UserCtxKey)
+func (auth *Auth) Authenticate(tokenString string, JWTSecret string) (*UserClaim, error) {
+	return ValidateToken(tokenString, JWTSecret)
+}
+
+func GetAuthenticatedUser(ginCtx *gin.Context) (*User, error) {
+	value, exists := ginCtx.Get(UserCtxKey)
+	if !exists {
+		return nil, NotAuthenticatesUser
+	}
+	user, ok := value.(*User)
 	if !ok {
 		return nil, NotAuthenticatesUser
 	}
@@ -92,16 +99,16 @@ func (auth *Auth) GetAuthenticatedUser(r *http.Request) (*User, error) {
 	return user, nil
 }
 
-func (auth *Auth) SetAuthenticatedUser(r *http.Request, user *User) *http.Request {
-	return web.AddValueToContext(r, UserCtxKey, user)
+func SetAuthenticatedUser(ginCtx *gin.Context, user *User) {
+	ginCtx.Set(UserCtxKey, user)
 }
 
 func (auth *Auth) CacheAuthenticatedUser(user *User) {
 	auth.authenticatedUsers.Store(user.Username, user)
 }
 
-func (auth *Auth) IsUserAuthenticated(r *http.Request) bool {
-	_, err := auth.GetAuthenticatedUser(r)
+func (auth *Auth) IsUserAuthenticated(ginCtx *gin.Context) bool {
+	_, err := GetAuthenticatedUser(ginCtx)
 	return err == nil
 }
 

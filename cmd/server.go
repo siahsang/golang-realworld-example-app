@@ -10,13 +10,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/server"
 )
 
 func (app *application) serve() error {
 
 	ginEngine := server.NewHttpServer(
-		true, app.uiRouter, app.uiConfig, app.blogAPIRouter, app.logger,
+		true,
+		app.uiRouter,
+		app.uiConfig,
+		app.blogAPIRouter,
+		app.logger,
+	    *app.config,
+		app.core,
+		handler.NewHandler(app.logger),
 	)
 
 	srv := &http.Server{

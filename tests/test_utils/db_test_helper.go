@@ -51,7 +51,7 @@ func CreateTestDB() {
 		logger.Error("Failed to create test database", "error", err)
 		os.Exit(1)
 	} else {
-		logger.Info("Database %s created successfully", testDBName)
+		logger.Info("Database created successfully", "name", testDBName)
 	}
 
 }
