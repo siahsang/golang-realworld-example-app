@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/server"
 )
 
@@ -22,9 +21,8 @@ func (app *application) serve() error {
 		app.uiConfig,
 		app.blogAPIRouter,
 		app.logger,
-	    *app.config,
+		*app.config,
 		app.core,
-		handler.NewHandler(app.logger),
 	)
 
 	srv := &http.Server{

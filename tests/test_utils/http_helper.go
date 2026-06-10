@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/server"
 )
 
@@ -36,7 +35,6 @@ func NewTestClient(t *testing.T) *TestClient {
 		app.Logger,
 		*app.Config,
 		app.Core,
-		handler.NewHandler(app.Logger),
 	)
 
 	return &TestClient{Engine: engine}

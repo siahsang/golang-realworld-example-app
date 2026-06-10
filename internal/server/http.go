@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
-	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/router"
 	"github.com/siahsang/blog/internal/utils/config"
 )
@@ -21,7 +20,6 @@ func NewHttpServer(
 	logger *slog.Logger,
 	config config.Config,
 	coreSys *core.Core,
-	handler *handler.Handler,
 ) *gin.Engine {
 
 	if debug {
