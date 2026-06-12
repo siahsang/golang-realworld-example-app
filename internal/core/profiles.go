@@ -103,7 +103,7 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 
 	followeeUser, err := c.GetUserByUsername(ctx, followeeUserName)
 	if err != nil {
-		return nil, xerrors.New(err)
+		return nil, err
 	}
 
 	insertSql := `
@@ -112,15 +112,13 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 		RETURNING user_id, follower_id
 	`
 
-	args := []interface{}{followeeUser.ID, followerUser.ID}
-
 	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, insertSql, func(rows *sql.Rows) (bool, error) {
 		var followerID, followeeID int64
 		if err := rows.Scan(&followerID, &followeeID); err != nil {
 			return false, xerrors.New(err)
 		}
 		return true, nil
-	}, args)
+	}, followeeUser.ID, followerUser.ID)
 
 	if err != nil {
 		switch {
@@ -131,7 +129,7 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 		}
 	}
 
-	profile, err := c.GetProfileByUserName(ctx, followerUser.Username, nil)
+	profile, err := c.GetProfileByUserName(ctx, followeeUser.Username, &followerUser.ID)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -142,7 +140,7 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
 	followeeUser, err := c.GetUserByUsername(ctx, followeeUserName)
 	if err != nil {
-		return nil, xerrors.New(err)
+		return nil, err
 	}
 
 	deleteSql := `
@@ -160,7 +158,7 @@ func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followe
 		return nil, xerrors.New(UserIsNotFollowed)
 	}
 
-	profile, err := c.GetProfileByUserName(ctx, followerUser.Username, nil)
+	profile, err := c.GetProfileByUserName(ctx, followeeUser.Username, &followerUser.ID)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

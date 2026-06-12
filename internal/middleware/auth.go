@@ -53,3 +53,46 @@ func (au *AuthUserMiddleware) OptionalAuthMiddleware() gin.HandlerFunc {
 		context.Next()
 	}
 }
+
+// RequiredAuthMiddleware creates a middleware that requires authentication.
+// Returns 401 Unauthorized if token is missing or invalid.
+func (au *AuthUserMiddleware) RequiredAuthMiddleware() gin.HandlerFunc {
+	return func(context *gin.Context) {
+		authorization := context.GetHeader("Authorization")
+		if authorization == "" {
+			context.AbortWithStatusJSON(401, map[string]string{
+				"error": "Missing authorization header",
+			})
+			return
+		}
+
+		authorizationParts := strings.Split(authorization, " ")
+		if len(authorizationParts) != 2 || authorizationParts[0] != "Token" {
+			context.AbortWithStatusJSON(401, map[string]string{
+				"error": "Invalid authorization format",
+			})
+			return
+		}
+
+		token := authorizationParts[1]
+		claim, err := auth.ValidateToken(token, au.config.JWTSecret)
+		if err != nil {
+			context.AbortWithStatusJSON(401, map[string]string{
+				"error": "Invalid or expired token",
+			})
+			return
+		}
+
+		user, err := au.core.GetUserByEmail(context, claim.Email)
+		if err != nil || user == nil {
+			context.AbortWithStatusJSON(401, map[string]string{
+				"error": "User not found",
+			})
+			return
+		}
+
+		user.Token = token
+		auth.SetAuthenticatedUser(context, user)
+		context.Next()
+	}
+}

@@ -95,6 +95,15 @@ func (c *TestClient) GetWithAuth(path string, token string) *httptest.ResponseRe
 	return w
 }
 
+// DeleteWithAuth makes a DELETE request with an Authorization header
+func (c *TestClient) DeleteWithAuth(path string, token string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodDelete, path, nil)
+	req.Header.Set("Authorization", "Token "+token)
+	w := httptest.NewRecorder()
+	c.Engine.ServeHTTP(w, req)
+	return w
+}
+
 // ParseJSON parses JSON response body into the given interface
 func ParseJSON(t *testing.T, w *httptest.ResponseRecorder, v any) {
 	t.Helper()
