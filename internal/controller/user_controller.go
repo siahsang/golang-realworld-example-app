@@ -233,6 +233,17 @@ func (u *UserController) Follow(ctx *gin.Context) {
 				},
 			})
 			return
+		case errors.Is(err, core.CannotFollowSelf):
+			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+				Code: http.StatusBadRequest,
+				ErrorDetails: []*validator.FormErrorField{
+					{
+						ErrorField: "body",
+						ErrorMsg:   "Cannot follow yourself",
+					},
+				},
+			})
+			return
 		case errors.Is(err, core.UserIsAlreadyFollowed):
 			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
 				Code: http.StatusBadRequest,

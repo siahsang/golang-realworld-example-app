@@ -13,6 +13,7 @@ import (
 var (
 	UserIsAlreadyFollowed = xerrors.Message("User is already followed")
 	UserIsNotFollowed     = xerrors.Message("User is not followed")
+	CannotFollowSelf      = xerrors.Message("Cannot follow yourself")
 )
 
 // todo: use one sql query to fetch user and following status
@@ -100,6 +101,10 @@ func (c *Core) GetFollowingUserList(ctx context.Context, username string) ([]*au
 }
 
 func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeUserName string) (*models.Profile, error) {
+
+	if followerUser.Username == followeeUserName {
+		return nil, xerrors.New(CannotFollowSelf)
+	}
 
 	followeeUser, err := c.GetUserByUsername(ctx, followeeUserName)
 	if err != nil {

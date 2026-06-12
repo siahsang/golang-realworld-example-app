@@ -456,3 +456,39 @@ func TestUnfollow_WithoutAuth_401(t *testing.T) {
 		t.Error("Expected error message in response")
 	}
 }
+
+// TestFollow_SelfFollow_400 tests attempting to follow yourself
+// Acceptance Criteria: 400 Bad Request when user tries to follow themselves
+func TestFollow_SelfFollow_400(t *testing.T) {
+	defer test_utils.ResetTestDB()
+
+	client := test_utils.NewTestClient(t)
+
+	// Setup: Create authenticated user
+	authResponse := createTestUser(t, client, "user@example.com", "testuser", "password123")
+	userToken := getUserToken(authResponse)
+
+	// Act: Try to follow yourself
+	w := client.PostWithAuth("/api/profiles/testuser/follow", nil, userToken)
+
+	// Assert: Status 400
+	test_utils.AssertStatus(t, w, http.StatusBadRequest)
+
+	// Assert: Error response format
+	var response map[string]interface{}
+	test_utils.ParseJSON(t, w, &response)
+
+	errors, ok := response["errors"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Response does not contain errors object")
+	}
+
+	bodyErrors, ok := errors["body"].([]interface{})
+	if !ok {
+		t.Fatal("Errors does not contain 'body' array")
+	}
+
+	if len(bodyErrors) == 0 {
+		t.Error("Expected error message in body array")
+	}
+}
