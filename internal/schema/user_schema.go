@@ -1,5 +1,7 @@
 package schema
 
+import "github.com/siahsang/blog/models"
+
 type UserLoginPayload struct {
 	Email    string `validate:"required,email,gt=2,lte=30" json:"email"`
 	Password string `validate:"required,gte=8,lte=30" json:"password"`
@@ -21,4 +23,8 @@ type UserRegisterReq struct {
 
 type ProfileResponse struct {
 	Profile interface{} `json:"profile"`
+}
+
+type FollowUserResponse struct {
+	Profile *models.Profile `json:"profile"`
 }

@@ -4,17 +4,24 @@ schema: spec-driven
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.
 # Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Domain: blogging platform like Medium
+  Tech stack: golang, gin
+  We use conventional commits
+  
+  Error handling:
+  Errors and Status Codes
+  If a request fails any validations, expect a 422 and errors in the following format:
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  {
+    "errors":{
+      "body": [
+        "can't be empty"
+      ]
+    }
+  }
+
+  Other status codes:
+  401 for Unauthorized requests, when a request requires authentication but it isn’t provided
+  403 for Forbidden requests, when a request may be valid but the user doesn’t have permissions to perform the action
+  404 for Not found requests, when a resource can’t be found to fulfill the request
