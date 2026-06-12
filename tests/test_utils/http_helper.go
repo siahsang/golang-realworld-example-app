@@ -33,8 +33,7 @@ func NewTestClient(t *testing.T) *TestClient {
 		app.UIConfig,
 		app.BlogAPIRouter,
 		app.Logger,
-		*app.Config,
-		app.Core,
+		app.AuthUserMiddleware,
 	)
 
 	return &TestClient{Engine: engine}

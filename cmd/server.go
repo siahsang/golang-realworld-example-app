@@ -21,8 +21,7 @@ func (app *application) serve() error {
 		app.uiConfig,
 		app.blogAPIRouter,
 		app.logger,
-		*app.config,
-		app.core,
+		app.authUserMiddleware,
 	)
 
 	srv := &http.Server{

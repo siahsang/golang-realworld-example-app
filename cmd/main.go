@@ -12,6 +12,7 @@ import (
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/controller"
 	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/middleware"
 	"github.com/siahsang/blog/internal/router"
 	"github.com/siahsang/blog/internal/server"
 	"github.com/siahsang/blog/internal/utils/config"
@@ -19,16 +20,17 @@ import (
 )
 
 type application struct {
-	config        *config.Config
-	uiConfig      *server.UIConfig
-	uiRouter      *router.UIRouter
-	blogAPIRouter *router.BlogAPIRouter
-	auth          *auth.Auth
-	core          *core.Core
-	logger        *slog.Logger
-	wg            sync.WaitGroup
-	db            *sql.DB
-	session       databaseutils.Session
+	config            *config.Config
+	uiConfig          *server.UIConfig
+	uiRouter          *router.UIRouter
+	blogAPIRouter     *router.BlogAPIRouter
+	auth              *auth.Auth
+	core              *core.Core
+	logger            *slog.Logger
+	wg                sync.WaitGroup
+	db                *sql.DB
+	session           databaseutils.Session
+	authUserMiddleware *middleware.AuthUserMiddleware
 }
 
 func main() {
@@ -83,17 +85,20 @@ func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
 		core,
 		logger, cfg)
 
+	authUserMiddleware := middleware.NewAuthUserMiddleware(core, cfg, logger)
+
 	app := &application{
-		uiConfig:      uiConfig,
-		uiRouter:      uiRouter,
-		blogAPIRouter: router.NewBlogAPIRouter(userController),
-		auth:          auth.New(cfg),
-		core:          core,
-		logger:        logger,
-		wg:            sync.WaitGroup{},
-		db:            db,
-		session:       databaseutils.NewSession(db),
-		config:        cfg,
+		uiConfig:           uiConfig,
+		uiRouter:           uiRouter,
+		blogAPIRouter:      router.NewBlogAPIRouter(userController),
+		auth:               auth.New(cfg),
+		core:               core,
+		logger:             logger,
+		wg:                 sync.WaitGroup{},
+		db:                 db,
+		session:            databaseutils.NewSession(db),
+		config:             cfg,
+		authUserMiddleware: authUserMiddleware,
 	}
 
 	return app, nil

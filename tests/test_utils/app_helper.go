@@ -10,6 +10,7 @@ import (
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/controller"
 	"github.com/siahsang/blog/internal/core"
+	"github.com/siahsang/blog/internal/middleware"
 	"github.com/siahsang/blog/internal/router"
 	"github.com/siahsang/blog/internal/server"
 	"github.com/siahsang/blog/internal/utils/config"
@@ -18,16 +19,17 @@ import (
 
 // TestApplication holds a configured application instance for testing
 type TestApplication struct {
-	Config        *config.Config
-	UIConfig      *server.UIConfig
-	UIRouter      *router.UIRouter
-	BlogAPIRouter *router.BlogAPIRouter
-	Auth          *auth.Auth
-	Core          *core.Core
-	Logger        *slog.Logger
-	WG            sync.WaitGroup
-	DB            *sql.DB
-	Session       databaseutils.Session
+	Config            *config.Config
+	UIConfig          *server.UIConfig
+	UIRouter          *router.UIRouter
+	BlogAPIRouter     *router.BlogAPIRouter
+	Auth              *auth.Auth
+	Core              *core.Core
+	Logger            *slog.Logger
+	WG                sync.WaitGroup
+	DB                *sql.DB
+	Session           databaseutils.Session
+	AuthUserMiddleware *middleware.AuthUserMiddleware
 }
 
 // NewTestApplication creates a new application instance configured for testing
@@ -48,17 +50,20 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 		coreInstance,
 		logger, cfg)
 
+	authUserMiddleware := middleware.NewAuthUserMiddleware(coreInstance, cfg, logger)
+
 	app := &TestApplication{
-		Config:        cfg,
-		UIConfig:      uiConfig,
-		UIRouter:      uiRouter,
-		BlogAPIRouter: router.NewBlogAPIRouter(userController),
-		Auth:          auth.New(cfg),
-		Core:          coreInstance,
-		Logger:        logger,
-		WG:            sync.WaitGroup{},
-		DB:            db,
-		Session:       databaseutils.NewSession(db),
+		Config:             cfg,
+		UIConfig:           uiConfig,
+		UIRouter:           uiRouter,
+		BlogAPIRouter:      router.NewBlogAPIRouter(userController),
+		Auth:               auth.New(cfg),
+		Core:               coreInstance,
+		Logger:             logger,
+		WG:                 sync.WaitGroup{},
+		DB:                 db,
+		Session:            databaseutils.NewSession(db),
+		AuthUserMiddleware: authUserMiddleware,
 	}
 
 	return app, nil
