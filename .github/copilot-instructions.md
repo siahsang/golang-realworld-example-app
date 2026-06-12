@@ -26,6 +26,7 @@ When writing Go code:
 - Use the test utilities in `tests/test_utils/`
 - Follow the structure in `tests/TEST_STRUCTURE.md`
 - Always reset test database with `defer test_utils.ResetTestDB()`
+- Do not write unit tests
 
 ## Commands
 - Build: `go build ./...`
