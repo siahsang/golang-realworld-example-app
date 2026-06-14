@@ -43,17 +43,20 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 	}
 
 	uiRouter := router.NewUIRouter(logger)
-	coreInstance := core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	sqlTemplate := databaseutils.NewSQLTemplate(db, 3*time.Second)
+	coreInstance := core.NewCore(db, logger, sqlTemplate)
+	auth := auth.New(cfg)
 	userController := controller.NewUserController(
 		coreInstance,
 		logger, cfg)
+	profileController := controller.NewProfileController(coreInstance, logger, auth)
 
 	app := &TestApplication{
 		Config:        cfg,
 		UIConfig:      uiConfig,
 		UIRouter:      uiRouter,
-		BlogAPIRouter: router.NewBlogAPIRouter(userController),
-		Auth:          auth.New(cfg),
+		BlogAPIRouter: router.NewBlogAPIRouter(userController, profileController),
+		Auth:          auth,
 		Core:          coreInstance,
 		Logger:        logger,
 		WG:            sync.WaitGroup{},

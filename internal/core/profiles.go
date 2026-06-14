@@ -15,16 +15,7 @@ var (
 	UserIsNotFollowed     = xerrors.Message("User is not followed")
 )
 
-// todo: use one sql query to fetch user and following status
-func (c *Core) GetProfileByUserName(ctx context.Context, username string) (*models.Profile, error) {
-
-	const queryFollowing = `
-		SELECT EXISTS (
-			SELECT 1 FROM followers WHERE follower_id = $1
-		)
-	`
-
-	// Fetch user info
+func (c *Core) GetProfileByUserName(ctx context.Context, username string, followerID *int64) (*models.Profile, error) {
 	profile := &models.Profile{}
 	user, err := c.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -36,14 +27,24 @@ func (c *Core) GetProfileByUserName(ctx context.Context, username string) (*mode
 	profile.Bio = user.Bio
 	profile.Image = user.Image
 
-	// Check following status
+	if followerID == nil {
+		profile.Following = false
+		return profile, nil
+	}
+
+	queryFollowing := `
+		SELECT EXISTS (
+			SELECT 1 FROM followers WHERE follower_id = $1 AND user_id = $2
+		)
+	`
+
 	isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, queryFollowing, func(rows *sql.Rows) (bool, error) {
 		var isFollowing bool
 		if err := rows.Scan(&isFollowing); err != nil {
 			return false, xerrors.New(err)
 		}
 		return isFollowing, nil
-	}, profile.ID)
+	}, *followerID, profile.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)
@@ -60,7 +61,7 @@ func (c *Core) GetProfileByUserId(ctx context.Context, userId int64) (*models.Pr
 		return nil, xerrors.New(err)
 	}
 
-	return c.GetProfileByUserName(ctx, user.Username)
+	return c.GetProfileByUserName(ctx, user.Username, nil)
 }
 
 func (c *Core) GetFollowingUserList(ctx context.Context, username string) ([]*auth.User, error) {
@@ -127,7 +128,7 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 		}
 	}
 
-	profile, err := c.GetProfileByUserName(ctx, followerUser.Username)
+	profile, err := c.GetProfileByUserName(ctx, followerUser.Username, &followerUser.ID)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}
@@ -156,7 +157,7 @@ func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followe
 		return nil, xerrors.New(UserIsNotFollowed)
 	}
 
-	profile, err := c.GetProfileByUserName(ctx, followerUser.Username)
+	profile, err := c.GetProfileByUserName(ctx, followerUser.Username, &followerUser.ID)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

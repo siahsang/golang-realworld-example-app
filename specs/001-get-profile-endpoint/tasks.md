@@ -27,47 +27,46 @@
 
 ### Backend Implementation
 
-- [ ] **3.1** Create handler function `GetProfile` in `cmd/handlers.go`
+- [X] **3.1** Create profile controller with `GetProfile` method in `internal/controller/profile_controller.go`
   - Accept `gin.Context` parameter
   - Extract `username` from URL path parameter
   - Extract JWT token from `Authorization: Token <token>` header (optional)
-  - Call service/repository layer to fetch profile data
+  - Call core layer to fetch profile data
   - Return JSON response with profile object
 
-- [ ] **3.2** Create database query in `internal/repository/profile_repository.go` (or similar)
-  - SQL query to fetch user by username: `id, username, bio, image`
-  - LEFT JOIN with `followers` table to check following status
-  - Return `following: false` if no JWT token provided
-  - Return `following: true/false` based on follower relationship if JWT valid
+- [X] **3.2** Update core layer in `internal/core/profiles.go`
+  - Modified `GetProfileByUserName` to accept optional `followerID` parameter
+  - Return `following: false` if no followerID provided (unauthenticated)
+  - Check `followers` table if followerID provided (authenticated)
 
-- [ ] **3.3** Create profile model/struct in `internal/model/profile.go` (or similar)
+- [X] **3.3** Profile model already exists in `models/models.go`
   - Fields: `Username`, `Bio`, `Image`, `Following`
   - JSON tags matching RealWorld API spec
 
-- [ ] **3.4** Register route in `internal/router/BlogAPIRouter.go`
-  - Add `GET /api/profiles/:username` route
-  - Map to `GetProfile` handler
+- [X] **3.4** Register route in `internal/router/blog_api_router.go`
+  - Added `GET /api/profiles/:username` route
+  - Mapped to `ProfileController.GetProfile`
 
 ### Integration Tests
 
-- [ ] **3.5** Create test file `tests/api_tests/profile_test.go`
+- [X] **3.5** Create test file `tests/api_tests/profile_test.go`
   - Set up test database connection
   - Create test helper functions for API requests
 
-- [ ] **3.6** Test: Get existing user profile (unauthenticated)
+- [X] **3.6** Test: Get existing user profile (unauthenticated)
   - Seed test user in database
   - Make GET request without Authorization header
   - Assert 200 OK response
   - Assert profile data matches seeded user
   - Assert `following: false`
 
-- [ ] **3.7** Test: Get existing user profile (authenticated, not following)
+- [X] **3.7** Test: Get existing user profile (authenticated, not following)
   - Seed test user and authenticated user
   - Make GET request with valid JWT token
   - Assert 200 OK response
   - Assert `following: false` (no follower relationship)
 
-- [ ] **3.8** Test: Get existing user profile (authenticated, following)
+- [X] **3.8** Test: Get existing user profile (authenticated, following)
   - Seed test user, authenticated user, and follower relationship
   - Make GET request with valid JWT token
   - Assert 200 OK response
@@ -79,13 +78,13 @@
 
 ### Backend Implementation
 
-- [ ] **4.1** Add error handling in `GetProfile` handler
+- [X] **4.1** Add error handling in `GetProfile` handler
   - Check if user exists in database
-  - Return 404 with RealWorld error format if not found: `{"errors": {"body": ["profile not found"]}}`
+  - Return 404 with RealWorld error format if not found: `{"errors": {"body": ["User not found"]}}`
 
 ### Integration Tests
 
-- [ ] **4.2** Test: Get non-existent user profile
+- [X] **4.2** Test: Get non-existent user profile
   - Make GET request with username that doesn't exist
   - Assert 404 Not Found response
   - Assert error body matches RealWorld format
@@ -96,13 +95,13 @@
 
 ### Backend Implementation
 
-- [ ] **5.1** Handle null image in response
-  - Ensure `image` field returns `null` (not empty string) when user has no image
-  - Use pointer type or omitempty with proper JSON marshaling
+- [X] **5.1** Handle null image in response
+  - Profile model uses pointer type `*string` for image field
+  - Returns `null` when user has no image (already handled by existing model)
 
 ### Integration Tests
 
-- [ ] **5.2** Test: Get profile with null image
+- [X] **5.2** Test: Get profile with null image
   - Seed user without image (NULL in database)
   - Make GET request
   - Assert 200 OK response

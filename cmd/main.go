@@ -78,16 +78,19 @@ func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
 	}
 
 	uiRouter := router.NewUIRouter(logger)
-	core := core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	sqlTemplate := databaseutils.NewSQLTemplate(db, 3*time.Second)
+	core := core.NewCore(db, logger, sqlTemplate)
+	auth := auth.New(cfg)
 	userController := controller.NewUserController(
 		core,
 		logger, cfg)
+	profileController := controller.NewProfileController(core, logger, auth)
 
 	app := &application{
 		uiConfig:      uiConfig,
 		uiRouter:      uiRouter,
-		blogAPIRouter: router.NewBlogAPIRouter(userController),
-		auth:          auth.New(cfg),
+		blogAPIRouter: router.NewBlogAPIRouter(userController, profileController),
+		auth:          auth,
 		core:          core,
 		logger:        logger,
 		wg:            sync.WaitGroup{},
