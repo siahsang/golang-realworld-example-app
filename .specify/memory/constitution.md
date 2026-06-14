@@ -1,9 +1,9 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.0.1
+Version change: 1.0.1 → 1.0.2
 Modified principles:
-  - I. Idiomatic Go: Updated to reference .github/instructions/go-instructions.md as primary authority
+  - V. Test Coverage: Updated to explicitly prohibit unit tests; integration tests only
 Added sections: (none)
 Removed sections: (none)
 Templates requiring updates: (none)
@@ -69,16 +69,17 @@ All user-facing endpoints MUST enforce proper authentication and authorization. 
 
 ### V. Test Coverage
 
-All critical paths MUST have test coverage. Integration tests are mandatory for API endpoints. Requirements:
+All critical paths MUST have test coverage through integration tests only. Do not write unit tests. Requirements:
 
-- **API Tests**: Integration tests for all endpoints in `tests/api_tests/`
+- **Integration Tests Only**: All tests MUST be integration tests in `tests/api_tests/`
+- **No Unit Tests**: Do not write unit tests; test functionality through the API
 - **Test Structure**: Follow `TEST_STRUCTURE.md`; use table-driven tests where applicable
 - **Test Data**: Use test database; truncate tables between tests; never test against production
 - **Critical Paths**: Test authentication flows, CRUD operations, error cases
 - **Makefile**: Use `make audit` for quality checks before committing
 - **CI**: All tests must pass in CI; no disabled tests without documented reason
 
-**Rationale**: Tests provide confidence for refactoring, catch regressions, and document expected behavior.
+**Rationale**: Integration tests provide higher confidence by testing the full stack; unit tests create maintenance burden without proportional benefit.
 
 ## Development Workflow
 
@@ -130,4 +131,4 @@ This constitution supersedes all other development practices in this repository.
 - Use `Constitution Check` section in implementation plans
 - Document any necessary violations in plan's Complexity Tracking table
 
-**Version**: 1.0.1 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
+**Version**: 1.0.2 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
