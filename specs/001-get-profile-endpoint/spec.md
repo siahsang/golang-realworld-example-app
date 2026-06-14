@@ -26,6 +26,8 @@ As a blog reader, I want to view another user's profile so I can learn about the
 
 3. **Given** a user "jake" exists, **When** I request GET `/api/profiles/jake` with a valid JWT token for a user who IS following jake, **Then** I receive status 200 with following: true
 
+4. **Given** any user exists, **When** I request their profile WITHOUT providing authentication, **Then** the request succeeds (authentication is OPTIONAL, not required)
+
 ---
 
 ### User Story 2 - Handle Non-existent User (Priority: P2)
@@ -70,6 +72,7 @@ As a blog reader, I want to view profiles of users who haven't uploaded an image
 - **FR-008**: System MUST return following: false when request is made without authentication
 - **FR-009**: System MUST calculate and return actual following status when request includes valid JWT authentication
 - **FR-010**: System MUST return error response in format `{"errors": {"body": ["error message"]}}` for validation errors
+- **FR-011**: System MUST NOT require authentication - the endpoint MUST work with or without JWT token
 
 ### Key Entities
 
@@ -94,3 +97,4 @@ As a blog reader, I want to view profiles of users who haven't uploaded an image
 - Bio content is stored as plain text without markdown or HTML formatting
 - JWT authentication uses the `Authorization: Token <token>` header format as per RealWorld spec
 - The following relationship is unidirectional (user A can follow user B without reciprocity)
+- **Authentication is OPTIONAL**: Clients can call this endpoint with or without providing a JWT token
