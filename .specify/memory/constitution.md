@@ -1,9 +1,9 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.1 → 1.0.2
+Version change: 1.0.2 → 1.0.3
 Modified principles:
-  - V. Test Coverage: Updated to explicitly prohibit unit tests; integration tests only
+  - II. API-First: Added RealWorld error response format and HTTP status code requirements
 Added sections: (none)
 Removed sections: (none)
 Templates requiring updates: (none)
@@ -36,7 +36,19 @@ All API endpoints MUST conform to the RealWorld API specification. The API is th
 - **JSON Format**: All requests and responses use JSON; follow RealWorld schema exactly
 - **Authentication**: JWT token-based auth via `Authorization: Token <token>` header
 - **Pagination**: Support offset/limit pagination for list endpoints
-- **Error Responses**: Consistent error format with descriptive messages
+- **Error Response Format**: Validation errors MUST return 422 with format:
+  ```json
+  {
+    "errors":{
+      "body": ["can't be empty"]
+    }
+  }
+  ```
+- **HTTP Status Codes**:
+  - `422`: Validation errors (with error response format above)
+  - `401`: Unauthorized (authentication required but not provided)
+  - `403`: Forbidden (valid request but user lacks permissions)
+  - `404`: Not found (resource doesn't exist)
 - **Validation**: Validate all input; return 422 for validation errors
 
 **Rationale**: RealWorld API compliance ensures interoperability with existing clients and demonstrates production-ready API design.
@@ -131,4 +143,4 @@ This constitution supersedes all other development practices in this repository.
 - Use `Constitution Check` section in implementation plans
 - Document any necessary violations in plan's Complexity Tracking table
 
-**Version**: 1.0.2 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
+**Version**: 1.0.3 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-14
