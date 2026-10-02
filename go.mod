@@ -1,6 +1,6 @@
 module github.com/siahsang/blog
 
-go 1.24.2
+go 1.27.1
 
 require github.com/julienschmidt/httprouter v1.3.0
 
