@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 
 	// Run migrations
 	logger.Info("Running migrations on test database...")
-	projectRoot := "/home/javad/Project/go-sample/blog-app/my-blog-app"
+	projectRoot := "./../../"
 	migrationsPath := filepath.Join(projectRoot, "migrations")
 	if err := test_utils.RunMigrations(db, migrationsPath); err != nil {
 		logger.Error("Failed to run migrations", "error", err)
