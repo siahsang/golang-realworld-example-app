@@ -19,16 +19,16 @@ import (
 
 // TestApplication holds a configured application instance for testing
 type TestApplication struct {
-	Config            *config.Config
-	UIConfig          *server.UIConfig
-	UIRouter          *router.UIRouter
-	BlogAPIRouter     *router.BlogAPIRouter
-	Auth              *auth.Auth
-	Core              *core.Core
-	Logger            *slog.Logger
-	WG                sync.WaitGroup
-	DB                *sql.DB
-	Session           databaseutils.Session
+	Config             *config.Config
+	UIConfig           *server.UIConfig
+	UIRouter           *router.UIRouter
+	BlogAPIRouter      *router.BlogAPIRouter
+	Auth               *auth.Auth
+	Core               *core.Core
+	Logger             *slog.Logger
+	WG                 sync.WaitGroup
+	DB                 *sql.DB
+	Session            databaseutils.Session
 	AuthUserMiddleware *middleware.AuthUserMiddleware
 }
 
@@ -46,9 +46,12 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 
 	uiRouter := router.NewUIRouter(logger)
 	coreInstance := core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	authInstance := auth.New(cfg)
 	userController := controller.NewUserController(
 		coreInstance,
 		logger, cfg)
+
+	profiler := controller.NewProfileController(coreInstance, logger, authInstance)
 
 	authUserMiddleware := middleware.NewAuthUserMiddleware(coreInstance, cfg, logger)
 
@@ -56,7 +59,7 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 		Config:             cfg,
 		UIConfig:           uiConfig,
 		UIRouter:           uiRouter,
-		BlogAPIRouter:      router.NewBlogAPIRouter(userController),
+		BlogAPIRouter:      router.NewBlogAPIRouter(userController, profiler),
 		Auth:               auth.New(cfg),
 		Core:               coreInstance,
 		Logger:             logger,

@@ -1,11 +1,21 @@
 package api_tests
 
 import (
+	"database/sql"
 	"net/http"
 	"testing"
 
+	"github.com/siahsang/blog/models"
 	"github.com/siahsang/blog/tests/test_utils"
 )
+
+type profileResponse struct {
+	Profile *models.Profile `json:"profile"`
+}
+
+type profileErrorResponse struct {
+	Errors map[string][]string `json:"errors"`
+}
 
 // TestGetProfile_WithoutAuth_Success tests getting a profile without authentication
 // Acceptance Criteria: GET /api/profiles/:username returns profile with following=false
@@ -24,20 +34,19 @@ func TestGetProfile_WithoutAuth_Success(t *testing.T) {
 	test_utils.AssertStatus(t, w, http.StatusOK)
 
 	// Assert: Response contains profile object
-	var response map[string]interface{}
+	var response profileResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	profile, ok := response["profile"].(map[string]interface{})
-	if !ok {
+	if response.Profile == nil {
 		t.Fatal("Response does not contain profile object")
 	}
 
 	// Assert: Profile fields
-	if profile["username"] != "testuser" {
-		t.Errorf("Expected username 'testuser', got '%v'", profile["username"])
+	if response.Profile.Username != "testuser" {
+		t.Errorf("Expected username 'testuser', got '%s'", response.Profile.Username)
 	}
-	if profile["following"] != false {
-		t.Errorf("Expected following=false for unauthenticated request, got %v", profile["following"])
+	if response.Profile.Following {
+		t.Error("Expected following=false for unauthenticated request")
 	}
 }
 
@@ -62,16 +71,18 @@ func TestGetProfile_WithAuth_Success(t *testing.T) {
 	test_utils.AssertStatus(t, w, http.StatusOK)
 
 	// Assert: Response structure
-	var response map[string]interface{}
+	var response profileResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	profile, ok := response["profile"].(map[string]interface{})
-	if !ok {
+	if response.Profile == nil {
 		t.Fatal("Response does not contain profile object")
 	}
 
-	if profile["username"] != "profileuser" {
-		t.Errorf("Expected username 'profileuser', got '%v'", profile["username"])
+	if response.Profile.Username != "profileuser" {
+		t.Errorf("Expected username 'profileuser', got '%s'", response.Profile.Username)
+	}
+	if response.Profile.Following {
+		t.Error("Expected following=false when authenticated user is not following profile")
 	}
 }
 
@@ -91,10 +102,7 @@ func TestGetProfile_WithAuth_FollowingTrue(t *testing.T) {
 	createTestUser(t, client, "followed@example.com", "followed", "password123")
 
 	// Setup: Create following relationship in database
-	_, err := db.Exec(`INSERT INTO followers (follower_id, user_id) VALUES (1, 2)`)
-	if err != nil {
-		t.Fatalf("Failed to create following relationship: %v", err)
-	}
+	createFollowing(t, db, "follower", "followed")
 
 	// Act: Get profile with auth
 	w := client.GetWithAuth("/api/profiles/followed", followerToken)
@@ -103,16 +111,15 @@ func TestGetProfile_WithAuth_FollowingTrue(t *testing.T) {
 	test_utils.AssertStatus(t, w, http.StatusOK)
 
 	// Assert: following=true
-	var response map[string]interface{}
+	var response profileResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	profile, ok := response["profile"].(map[string]interface{})
-	if !ok {
+	if response.Profile == nil {
 		t.Fatal("Response does not contain profile object")
 	}
 
-	if profile["following"] != true {
-		t.Errorf("Expected following=true, got %v", profile["following"])
+	if !response.Profile.Following {
+		t.Error("Expected following=true")
 	}
 }
 
@@ -130,19 +137,13 @@ func TestGetProfile_NotFound_404(t *testing.T) {
 	test_utils.AssertStatus(t, w, http.StatusNotFound)
 
 	// Assert: Error response format
-	var response map[string]interface{}
+	var response profileErrorResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	errors, ok := response["errors"].(map[string]interface{})
+	bodyErrors, ok := response.Errors["body"]
 	if !ok {
 		t.Fatal("Response does not contain errors object")
 	}
-
-	bodyErrors, ok := errors["body"].([]interface{})
-	if !ok {
-		t.Fatal("Errors does not contain 'body' array")
-	}
-
 	if len(bodyErrors) == 0 {
 		t.Error("Expected error message in body array")
 	}
@@ -165,16 +166,15 @@ func TestGetProfile_InvalidToken_TreatedAsUnauthenticated(t *testing.T) {
 	test_utils.AssertStatus(t, w, http.StatusOK)
 
 	// Assert: Treated as unauthenticated (following=false)
-	var response map[string]interface{}
+	var response profileResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	profile, ok := response["profile"].(map[string]interface{})
-	if !ok {
+	if response.Profile == nil {
 		t.Fatal("Response does not contain profile object")
 	}
 
-	if profile["following"] != false {
-		t.Errorf("Expected following=false for invalid token, got %v", profile["following"])
+	if response.Profile.Following {
+		t.Error("Expected following=false for invalid token")
 	}
 }
 
@@ -220,19 +220,49 @@ func TestGetProfile_WithBioAndImage(t *testing.T) {
 	test_utils.AssertStatus(t, w, http.StatusOK)
 
 	// Assert: Bio and image present
-	var response map[string]interface{}
+	var response profileResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	profile, ok := response["profile"].(map[string]interface{})
-	if !ok {
+	if response.Profile == nil {
 		t.Fatal("Response does not contain profile object")
 	}
 
-	if profile["bio"] != "I work at statefarm" {
-		t.Errorf("Expected bio 'I work at statefarm', got '%v'", profile["bio"])
+	if response.Profile.Bio == nil || *response.Profile.Bio != "I work at statefarm" {
+		t.Errorf("Expected bio 'I work at statefarm', got '%v'", response.Profile.Bio)
 	}
-	if profile["image"] != "https://api.realworld.io/images/smiley-cyrus.jpg" {
-		t.Errorf("Expected correct image URL, got '%v'", profile["image"])
+	if response.Profile.Image == nil || *response.Profile.Image != "https://api.realworld.io/images/smiley-cyrus.jpg" {
+		t.Errorf("Expected correct image URL, got '%v'", response.Profile.Image)
+	}
+}
+
+// TestGetProfile_NullImage verifies that an absent image is encoded as JSON null.
+func TestGetProfile_NullImage(t *testing.T) {
+	defer test_utils.ResetTestDB()
+
+	client := test_utils.NewTestClient(t)
+	db := test_utils.GetTestDB()
+
+	_, err := db.Exec(`
+		INSERT INTO users (email, username, password, bio, image)
+		VALUES ('noimage@example.com', 'noimage', 'hashedpw', 'Hello world', NULL)
+	`)
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+
+	w := client.Get("/api/profiles/noimage")
+	test_utils.AssertStatus(t, w, http.StatusOK)
+
+	var response profileResponse
+	test_utils.ParseJSON(t, w, &response)
+	if response.Profile == nil {
+		t.Fatal("Response does not contain profile object")
+	}
+	if response.Profile.Image != nil {
+		t.Errorf("Expected image to be null, got '%v'", response.Profile.Image)
+	}
+	if response.Profile.Bio == nil || *response.Profile.Bio != "Hello world" {
+		t.Errorf("Expected bio 'Hello world', got '%v'", response.Profile.Bio)
 	}
 }
 
@@ -256,29 +286,30 @@ func TestGetProfile_MultipleFollowingRelationships(t *testing.T) {
 	createTestUser(t, client, "profile@example.com", "profileuser", "password123")
 
 	// Setup: User A follows profile user (user B does not)
-	_, err := db.Exec(`INSERT INTO followers (follower_id, user_id) VALUES (1, 3)`)
-	if err != nil {
-		t.Fatalf("Failed to create following relationship: %v", err)
-	}
+	createFollowing(t, db, "usera", "profileuser")
 
 	// Act: User A gets profile (should see following=true)
 	wA := client.GetWithAuth("/api/profiles/profileuser", tokenA)
-	var responseA map[string]interface{}
+	var responseA profileResponse
 	test_utils.ParseJSON(t, wA, &responseA)
-	profileA := responseA["profile"].(map[string]interface{})
+	if responseA.Profile == nil {
+		t.Fatal("Response for user A does not contain profile object")
+	}
 
 	// Act: User B gets profile (should see following=false)
 	wB := client.GetWithAuth("/api/profiles/profileuser", tokenB)
-	var responseB map[string]interface{}
+	var responseB profileResponse
 	test_utils.ParseJSON(t, wB, &responseB)
-	profileB := responseB["profile"].(map[string]interface{})
+	if responseB.Profile == nil {
+		t.Fatal("Response for user B does not contain profile object")
+	}
 
 	// Assert: Different following status for different users
-	if profileA["following"] != true {
-		t.Errorf("User A: Expected following=true, got %v", profileA["following"])
+	if !responseA.Profile.Following {
+		t.Error("User A: Expected following=true")
 	}
-	if profileB["following"] != false {
-		t.Errorf("User B: Expected following=false, got %v", profileB["following"])
+	if responseB.Profile.Following {
+		t.Error("User B: Expected following=false")
 	}
 }
 
@@ -305,16 +336,37 @@ func TestGetProfile_SpecialCharactersInUsername(t *testing.T) {
 	// Assert: Status 200
 	test_utils.AssertStatus(t, w, http.StatusOK)
 
-	var response map[string]interface{}
+	var response profileResponse
 	test_utils.ParseJSON(t, w, &response)
 
-	profile, ok := response["profile"].(map[string]interface{})
-	if !ok {
+	if response.Profile == nil {
 		t.Fatal("Response does not contain profile object")
 	}
 
-	if profile["username"] != "test-user_123" {
-		t.Errorf("Expected username 'test-user_123', got '%v'", profile["username"])
+	if response.Profile.Username != "test-user_123" {
+		t.Errorf("Expected username 'test-user_123', got '%s'", response.Profile.Username)
+	}
+}
+
+func createFollowing(t *testing.T, db *sql.DB, followerUsername, followedUsername string) {
+	t.Helper()
+
+	result, err := db.Exec(`
+		INSERT INTO followers (follower_id, user_id)
+		SELECT follower.id, followed.id
+		FROM users AS follower, users AS followed
+		WHERE follower.username = $1 AND followed.username = $2
+	`, followerUsername, followedUsername)
+	if err != nil {
+		t.Fatalf("Failed to create following relationship: %v", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		t.Fatalf("Failed to verify following relationship: %v", err)
+	}
+	if rowsAffected != 1 {
+		t.Fatalf("Expected one following relationship, inserted %d", rowsAffected)
 	}
 }
 
