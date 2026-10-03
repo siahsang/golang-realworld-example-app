@@ -23,9 +23,11 @@ func (b *BlogAPIRouter) RegisterMustNotAuthAPIRouter(group *gin.RouterGroup) {
 	group.POST("/users/login", b.userController.Login)
 
 	group.GET("/profiles/:username", b.profileController.GetProfile)
+
+	group.GET("/articles", b.profileController.Follow)
 }
 
-func (b *BlogAPIRouter) RegisterAuthAPIRouter(group *gin.RouterGroup) {
-	group.POST("/profiles/:username/follow", b.userController.Follow)
-	group.DELETE("/profiles/:username/follow", b.userController.Unfollow)
+func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {
+	group.POST("/profiles/:username/follow", b.profileController.Follow)
+	group.DELETE("/profiles/:username/follow", b.profileController.Unfollow)
 }

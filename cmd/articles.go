@@ -1,4 +1,5 @@
 package main
+
 //
 //import (
 //	"context"
@@ -186,43 +187,7 @@ package main
 //	}
 //}
 //
-//func (app *application) getArticles(w http.ResponseWriter, r *http.Request) {
-//	v := validator.New()
-//	query := r.URL.Query()
-//	tagQ := app.readString(query, "tag", "")
-//	authorQ := app.readString(query, "author", "")
-//	favoritedQ := app.readString(query, "favorited", "")
-//
-//	limit := app.readInt(query, "limit", 20, v)
-//	offset := app.readInt(query, "offset", 0, v)
-//
-//	filters := filter.NewFilter(limit, offset)
-//
-//	filter.ValidateFilters(filters, v)
-//	if !v.IsValid() {
-//		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-//		return
-//	}
-//
-//	articles, err := app.core.GetArticles(r.Context(), filters, tagQ, authorQ, favoritedQ)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	user, _ := app.auth.GetAuthenticatedUser(r)
-//	response, err := prepareMultiArticleResponse(r, articles, app, user)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//}
+
 //
 //func (app *application) favouriteArticle(w http.ResponseWriter, r *http.Request) {
 //	params := httprouter.ParamsFromContext(r.Context())

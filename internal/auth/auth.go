@@ -103,10 +103,6 @@ func SetAuthenticatedUser(ginCtx *gin.Context, user *User) {
 	ginCtx.Set(UserCtxKey, user)
 }
 
-func (auth *Auth) CacheAuthenticatedUser(user *User) {
-	auth.authenticatedUsers.Store(user.Username, user)
-}
-
 func (auth *Auth) IsUserAuthenticated(ginCtx *gin.Context) bool {
 	_, err := GetAuthenticatedUser(ginCtx)
 	return err == nil

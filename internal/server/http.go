@@ -53,7 +53,7 @@ func NewHttpServer(
 	// Protected routes - require authentication
 	authGroup := ginEngine.Group(uiConfig.APIBaseURL)
 	authGroup.Use(authUserMiddleware.RequiredAuthMiddleware())
-	blogAPIRouter.RegisterAuthAPIRouter(authGroup)
+	blogAPIRouter.RegisterAuthRequiredAPIRouter(authGroup)
 
 	return ginEngine
 }
