@@ -38,7 +38,7 @@ func CreateTestDB() {
 		os.Exit(1)
 	}
 
-	// drop the database if not exist
+	// drop the database if exist
 	_, err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", testDBName))
 	if err != nil {
 		logger.Error("Failed to drop test database", "error", err)
