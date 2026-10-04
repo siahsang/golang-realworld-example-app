@@ -224,7 +224,7 @@ func (c *Core) CreateSlug(title string) string {
 	return slug
 }
 
-func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, error) {
+func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, totalCount int64, error) {
 	var favoritedById *int64
 	if strings.TrimSpace(favoritedBy) != "" {
 		user, err := c.GetUserByUsername(context, favoritedBy)
@@ -268,6 +268,18 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 		selectSQL += " WHERE " + strings.Join(whereClause, " AND ")
 	}
 
+	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (int64, error) {
+		var totalCount int64
+		if err := rows.Scan(&totalCount); err != nil {
+			return -1, xerrors.New(err)
+		}
+		return totalCount, nil
+	}, args...)
+
+	if err != nil {
+		return nil, -1, xerrors.New(err)
+	}
+
 	// add limit and offset
 	selectSQL += " ORDER BY a.created_at DESC LIMIT $" + fmt.Sprintf("%d", argId) + " OFFSET $" + fmt.Sprintf("%d", argId+1)
 	args = append(args, filter.Limit, filter.Offset)
@@ -282,10 +294,10 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 	}, args...)
 
 	if err != nil {
-		return nil, xerrors.New(err)
+		return nil, -1, xerrors.New(err)
 	}
 
-	return result, nil
+	return result, totalCount, nil
 }
 
 func (c *Core) UpdateArticle(context context.Context, article *models.Article) (*models.Article, error) {

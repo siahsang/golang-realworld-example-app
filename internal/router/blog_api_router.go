@@ -8,13 +8,17 @@ import (
 type BlogAPIRouter struct {
 	userController    *controller.UserController
 	profileController *controller.ProfileController
+	articleController *controller.ArticleController
 }
 
-func NewBlogAPIRouter(userController *controller.UserController,
-	profileController *controller.ProfileController) *BlogAPIRouter {
+func NewBlogAPIRouter(
+	userController *controller.UserController,
+	profileController *controller.ProfileController,
+	articleController *controller.ArticleController) *BlogAPIRouter {
 	return &BlogAPIRouter{
 		userController:    userController,
 		profileController: profileController,
+		articleController: articleController,
 	}
 }
 
@@ -24,7 +28,7 @@ func (b *BlogAPIRouter) RegisterMustNotAuthAPIRouter(group *gin.RouterGroup) {
 
 	group.GET("/profiles/:username", b.profileController.GetProfile)
 
-	group.GET("/articles", b.profileController.Follow)
+	group.GET("/articles", b.articleController.GetArticles)
 }
 
 func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {

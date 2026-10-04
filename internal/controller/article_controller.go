@@ -12,6 +12,7 @@ import (
 	"github.com/siahsang/blog/internal/filter"
 	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/utils/collectionutils"
+	"github.com/siahsang/blog/internal/utils/config"
 	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/models"
 )
@@ -33,7 +34,16 @@ type ArticleController struct {
 	handler *handler.Handler
 }
 
-func (c *ArticleController) getArticles(ctx *gin.Context) {
+func NewArticleController(core *core.Core, logger *slog.Logger, cfg *config.Config) *ArticleController {
+	return &ArticleController{
+		core:    core,
+		log:     logger,
+		auth:    auth.New(cfg),
+		handler: handler.NewHandler(logger),
+	}
+}
+
+func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	query := &ArticleListQuery{
 		Limit:  20,
 		Offset: 0,
@@ -185,6 +195,7 @@ func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, core *
 	}
 
 	return envelope{
-		"articles": articlesEnvelop,
+		"articles":      articlesEnvelop,
+		"articlesCount": len(articlesEnvelop),
 	}, nil
 }
