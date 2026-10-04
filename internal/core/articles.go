@@ -224,7 +224,7 @@ func (c *Core) CreateSlug(title string) string {
 	return slug
 }
 
-func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, totalCount int64, error) {
+func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, int64, error) {
 	var favoritedById *int64
 	if strings.TrimSpace(favoritedBy) != "" {
 		user, err := c.GetUserByUsername(context, favoritedBy)
@@ -235,6 +235,15 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 
 	selectSQL := `
 		SELECT DISTINCT a.id,a.slug,a.title,a.description,a.body,a.created_at,a.updated_at,a.author_id
+		FROM articles AS a 
+		    LEFT JOIN articles_tags at ON a.id = at.article_id 
+		    LEFT JOIN tags t ON at.tag_id = t.id 
+		    LEFT JOIN favourite_articles AS fa ON a.id = fa.article_id 
+		    LEFT JOIN users AS u ON a.author_id = u.id     
+	`
+
+	countSQL := `
+		SELECT COUNT(DISTINCT a.id)
 		FROM articles AS a 
 		    LEFT JOIN articles_tags at ON a.id = at.article_id 
 		    LEFT JOIN tags t ON at.tag_id = t.id 
@@ -266,9 +275,10 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 
 	if len(whereClause) > 0 {
 		selectSQL += " WHERE " + strings.Join(whereClause, " AND ")
+		countSQL += " WHERE " + strings.Join(whereClause, " AND ")
 	}
 
-	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (int64, error) {
+	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, countSQL, func(rows *sql.Rows) (int64, error) {
 		var totalCount int64
 		if err := rows.Scan(&totalCount); err != nil {
 			return -1, xerrors.New(err)

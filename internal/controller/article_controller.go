@@ -75,14 +75,14 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 
 	filters := filter.NewFilter(limit, offset)
 
-	articles, err := c.core.GetArticles(ctx, filters, tag, author, favorited)
+	articles, totalCount, err := c.core.GetArticles(ctx, filters, tag, author, favorited)
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, err)
 		return
 	}
 
 	user, _ := auth.GetAuthenticatedUser(ctx)
-	response, err := prepareMultiArticleResponse(ctx, articles, c.core, user)
+	response, err := prepareMultiArticleResponse(ctx, articles, totalCount, c.core, user)
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, err)
 		return
@@ -91,15 +91,15 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	c.handler.HandleResponse(ctx, response, nil)
 }
 
-func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
-	return prepareArticleResponse(ctx, articles, core, currentLoginUser, false)
+func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
+	return prepareArticleResponse(ctx, articles, totalCount, core, currentLoginUser, false)
 }
 
-func prepareSingleArticleResponse(ctx *gin.Context, article *models.Article, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
-	return prepareArticleResponse(ctx, []*models.Article{article}, core, currentLoginUser, true)
+func prepareSingleArticleResponse(ctx *gin.Context, article *models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
+	return prepareArticleResponse(ctx, []*models.Article{article}, totalCount, core, currentLoginUser, true)
 }
 
-func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, core *core.Core, currentLoginUser *auth.User, singleResponse bool) (envelope, error) {
+func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User, singleResponse bool) (envelope, error) {
 	type AuthorEnvelop struct {
 		Username  string  `json:"username"`
 		Bio       *string `json:"bio"`
@@ -196,6 +196,6 @@ func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, core *
 
 	return envelope{
 		"articles":      articlesEnvelop,
-		"articlesCount": len(articlesEnvelop),
+		"articlesCount": totalCount,
 	}, nil
 }
