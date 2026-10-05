@@ -129,7 +129,7 @@ func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalC
 		return nil, err
 	}
 
-	favouriteArticleByArticleId, err := core.FavouriteArticleByArticleId(ctx, articlesIdList, currentLoginUser)
+	favouriteArticleByArticleId, err := core.FavouriteArticleByUser(ctx, articlesIdList, currentLoginUser)
 	if err != nil {
 		return nil, xerrors.New(err)
 	}

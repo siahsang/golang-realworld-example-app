@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/stringutils"
-	"strings"
 )
 
 var (
@@ -121,7 +122,7 @@ func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]
 		return []*auth.User{}, nil
 	}
 
-	placeholders, args := stringutils.INCluse(userIdList)
+	placeholders, args := stringutils.INCluseOld(userIdList)
 	query := fmt.Sprintf(`
 		SELECT id, email, username, password, bio, image
 		FROM users

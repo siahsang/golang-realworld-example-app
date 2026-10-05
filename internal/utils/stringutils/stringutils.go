@@ -2,8 +2,9 @@ package stringutils
 
 import (
 	"fmt"
-	"github.com/siahsang/blog/internal/utils/functional"
 	"strconv"
+
+	"github.com/siahsang/blog/internal/utils/functional"
 )
 
 type StringNumber interface {
@@ -30,12 +31,17 @@ func ToListString[T StringNumber](v []T) []string {
 	return functional.Map(v, func(item T) string { return ToString(item) })
 }
 
-func INCluse[T any](list []T) (placeholders []string, args []any) {
+func INCluseOld[T any](list []T) (placeholders []string, args []any) {
+	return INClause(list, 1)
+}
+
+func INClause[T any](list []T, startIndex int) (placeholders []string, args []any) {
 	placeholders = make([]string, len(list))
 	args = make([]any, len(list))
 	for i, id := range list {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		placeholders[i] = fmt.Sprintf("$%d", startIndex)
 		args[i] = id
+		startIndex++
 	}
 
 	return placeholders, args

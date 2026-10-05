@@ -108,7 +108,7 @@ func (c *Core) IsFavouriteArticleByUser(context context.Context, articleId int64
 	return result, nil
 }
 
-func (c *Core) FavouriteArticleByArticleId(context context.Context, articleIdList []int64, user *auth.User) (map[int64]bool, error) {
+func (c *Core) FavouriteArticleByUser(context context.Context, articleIdList []int64, user *auth.User) (map[int64]bool, error) {
 	result := map[int64]bool{}
 	for _, articleId := range articleIdList {
 		result[articleId] = false
@@ -117,7 +117,15 @@ func (c *Core) FavouriteArticleByArticleId(context context.Context, articleIdLis
 		return result, nil
 	}
 
-	placeholders, args := stringutils.INCluse(articleIdList)
+	if len(articleIdList) == 0 {
+		return result, nil
+	}
+
+	placeholders, articleArgs := stringutils.INClause(articleIdList, 2)
+	args := make([]any, 0, len(articleArgs)+1)
+	args = append(args, user.ID)
+	args = append(args, articleArgs...)
+
 	selectSQL := fmt.Sprintf(`
 		SELECT article_id FROM favourite_articles WHERE user_id = $1 and article_id in (%s)
 	`, strings.Join(placeholders, ","))
@@ -151,7 +159,7 @@ func (c *Core) FavouriteCountByArticleId(context context.Context, articleIdList 
 		return result, nil
 	}
 
-	placeholders, args := stringutils.INCluse(articleIdList)
+	placeholders, args := stringutils.INCluseOld(articleIdList)
 	selectSQL := fmt.Sprintf(`
 		SELECT COUNT(*) as count, article_id
 		FROM favourite_articles		
