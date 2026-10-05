@@ -232,10 +232,10 @@ func (c *Core) CreateSlug(title string) string {
 	return slug
 }
 
-func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoritedBy string) ([]*models.Article, int64, error) {
+func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoriteBy string) ([]*models.Article, int64, error) {
 	var favoritedById *int64
-	if strings.TrimSpace(favoritedBy) != "" {
-		user, err := c.GetUserByUsername(context, favoritedBy)
+	if strings.TrimSpace(favoriteBy) != "" {
+		user, err := c.GetUserByUsername(context, favoriteBy)
 		if err == nil {
 			favoritedById = &user.ID
 		}
