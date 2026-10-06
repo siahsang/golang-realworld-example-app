@@ -1,6 +1,7 @@
 package controller
 
 import (
+	errors2 "errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/utils/collectionutils"
 	"github.com/siahsang/blog/internal/utils/config"
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/models"
 )
@@ -132,6 +134,35 @@ func (c *ArticleController) Feed(ctx *gin.Context) {
 	}
 
 	response, err := prepareMultiArticleResponse(ctx, articles, totalCount, c.core, user)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	c.handler.HandleResponse(ctx, response, nil)
+}
+
+func (c *ArticleController) GetArticleBySlug(ctx *gin.Context) {
+	slug := ctx.Param("slug")
+	user, _ := auth.GetAuthenticatedUser(ctx)
+
+	article, err := c.core.GetArticleBySlug(ctx, slug)
+
+	if err != nil {
+		if errors2.Is(err, databaseutils.ErrNoRowsFound) {
+			c.handler.HandleResponse(ctx, nil, &errors.AppError{
+				Code:         http.StatusNotFound,
+				ErrorMessage: "article not found",
+			})
+			return
+		}
+
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	response, err := prepareSingleArticleResponse(ctx, article, 1, c.core, user)
+
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, err)
 		return
