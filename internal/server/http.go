@@ -46,9 +46,9 @@ func NewHttpServer(
 	// handle 404 and static files
 	uiRouter.RegisterUIRouter(ginEngine, uiConfig.APIBaseURL)
 
-	// route must be available without logging in
+	// route must be available optional logging in
 	mustNotAuthGroupAPI := ginEngine.Group(uiConfig.APIBaseURL)
-	blogAPIRouter.RegisterMustNotAuthAPIRouter(mustNotAuthGroupAPI)
+	blogAPIRouter.RegisterOptionalAuthAPIRouter(mustNotAuthGroupAPI)
 
 	// Protected routes - require authentication
 	authGroup := ginEngine.Group(uiConfig.APIBaseURL)

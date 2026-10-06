@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -238,6 +239,11 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 		user, err := c.GetUserByUsername(context, favoriteBy)
 		if err == nil {
 			favoritedById = &user.ID
+		} else {
+			if errors.Is(err, NoRecordFound) {
+				return []*models.Article{}, 0, nil
+			}
+			return nil, 0, err
 		}
 	}
 
