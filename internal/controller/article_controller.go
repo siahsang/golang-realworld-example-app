@@ -91,6 +91,50 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	c.handler.HandleResponse(ctx, response, nil)
 }
 
+func (c *ArticleController) Feed(ctx *gin.Context) {
+	user, _ := auth.GetAuthenticatedUser(ctx)
+
+	query := &ArticleListQuery{
+		Limit:  20,
+		Offset: 0,
+	}
+
+	if c.handler.BindAndCheck(ctx, query) {
+		return
+	}
+
+	limit := query.Limit
+	offset := query.Offset
+
+	if limit < 0 {
+		c.handler.HandleResponse(ctx, nil, errors.AppError{
+			ErrorMessage: "invalid limit",
+		})
+		return
+	}
+
+	if offset < 0 {
+		c.handler.HandleResponse(ctx, nil, errors.AppError{
+			ErrorMessage: "invalid offset",
+		})
+		return
+	}
+
+	articles, totalCount, err := c.core.FeedArticle(ctx, user.Username, limit, offset)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	response, err := prepareMultiArticleResponse(ctx, articles, totalCount, c.core, user)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	c.handler.HandleResponse(ctx, response, nil)
+}
+
 func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
 	return prepareArticleResponse(ctx, articles, totalCount, core, currentLoginUser, false)
 }

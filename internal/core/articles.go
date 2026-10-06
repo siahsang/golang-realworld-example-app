@@ -12,6 +12,7 @@ import (
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/filter"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
+	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/internal/utils/stringutils"
 	"github.com/siahsang/blog/models"
 )
@@ -322,6 +323,70 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 	}
 
 	return result, totalCount, nil
+}
+
+func (c *Core) FeedArticle(ctx context.Context, username string, limit, offset int64) ([]*models.Article, int64, error) {
+	followingUserList, err := c.GetFollowingUserList(ctx, username)
+	if err != nil {
+		return nil, -1, xerrors.New(err)
+	}
+
+	userListId := functional.Map(followingUserList, func(user *auth.User) int64 {
+		return user.ID
+	})
+
+	if len(userListId) == 0 {
+		return []*models.Article{}, 0, nil
+	}
+
+	placeholders, args := stringutils.INClause(userListId, 1)
+	inClause := strings.Join(placeholders, ",")
+
+	selectSQL := fmt.Sprintf(`
+	SELECT DISTINCT
+		a.id, a.slug, a.title, a.description, a.body,
+		a.created_at, a.updated_at, a.author_id
+	FROM articles AS a
+	WHERE a.author_id IN (%s)
+`, inClause)
+
+	countSQL := fmt.Sprintf(`
+	SELECT COUNT(DISTINCT a.id)
+	FROM articles AS a
+	WHERE a.author_id IN (%s)
+`, inClause)
+
+	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, countSQL, func(rows *sql.Rows) (int64, error) {
+		var totalCount int64
+		if err := rows.Scan(&totalCount); err != nil {
+			return -1, xerrors.New(err)
+		}
+		return totalCount, nil
+	}, args...)
+
+	if err != nil {
+		return nil, -1, xerrors.New(err)
+	}
+
+	nextArg := len(args) + 1
+	selectSQL += fmt.Sprintf(" ORDER BY a.created_at DESC, a.id DESC LIMIT $%d OFFSET $%d", nextArg, nextArg+1)
+	args = append(args, limit, offset)
+
+	result, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
+		var article = &models.Article{}
+		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return article, nil
+	}, args...)
+
+	if err != nil {
+		return nil, -1, xerrors.New(err)
+	}
+
+	return result, totalCount, nil
+
 }
 
 func (c *Core) UpdateArticle(context context.Context, article *models.Article) (*models.Article, error) {
