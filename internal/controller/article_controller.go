@@ -2,6 +2,7 @@ package controller
 
 import (
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -59,15 +60,17 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	limit := query.Limit
 	offset := query.Offset
 
-	if limit < 0 {
-		c.handler.HandleResponse(ctx, nil, errors.AppError{
+	if limit <= 0 {
+		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid limit",
 		})
 		return
 	}
 
 	if offset < 0 {
-		c.handler.HandleResponse(ctx, nil, errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid offset",
 		})
 		return
@@ -106,15 +109,17 @@ func (c *ArticleController) Feed(ctx *gin.Context) {
 	limit := query.Limit
 	offset := query.Offset
 
-	if limit < 0 {
-		c.handler.HandleResponse(ctx, nil, errors.AppError{
+	if limit <= 0 {
+		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid limit",
 		})
 		return
 	}
 
 	if offset < 0 {
-		c.handler.HandleResponse(ctx, nil, errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid offset",
 		})
 		return
@@ -178,6 +183,10 @@ func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalC
 		return nil, xerrors.New(err)
 	}
 	favouriteCountByArticleId, err := core.FavouriteCountByArticleId(ctx, articlesIdList)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+
 	userIdList := functional.Map(articles, func(article *models.Article) int64 {
 		return article.AuthorID
 	})
