@@ -45,9 +45,13 @@ func (c *Core) CreateArticle(context context.Context, article *models.Article, t
 			return nil, xerrors.New(err)
 		}
 	}
-	savedTagList, err := c.CreateTag(context, tagModels)
-	if err != nil {
-		return nil, xerrors.New(err)
+
+	var savedTagList []*models.Tag
+	if len(tagModels) > 0 {
+		savedTagList, err = c.CreateTag(context, tagModels)
+		if err != nil {
+			return nil, xerrors.New(err)
+		}
 	}
 
 	for _, tag := range savedTagList {

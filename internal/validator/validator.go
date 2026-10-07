@@ -29,6 +29,7 @@ func NewValidator(logger *slog.Logger) *Validator {
 	once.Do(func() {
 		myValidator := validator.New(validator.WithRequiredStructEnabled())
 		myValidator.RegisterValidation("sanitizer", Sanitizer)
+		myValidator.RegisterValidation("notblank", NotBlank)
 		myValidator.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			if jsonTag := fld.Tag.Get("json"); len(jsonTag) > 0 {
 				if jsonTag == "-" {
@@ -125,4 +126,8 @@ func getObjectTagByFieldName(obj any, fieldName string) (tag string) {
 		return structField.Tag.Get("form")
 	}
 	return tag
+}
+
+func NotBlank(fl validator.FieldLevel) bool {
+	return strings.TrimSpace(fl.Field().String()) != ""
 }

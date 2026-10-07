@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"context"
 	errors2 "errors"
 	"log/slog"
 	"net/http"
@@ -174,85 +173,79 @@ func (c *ArticleController) GetArticleBySlug(ctx *gin.Context) {
 	c.handler.HandleResponse(ctx, response, nil)
 }
 
-func (c *ArticleController) createArticle(ctx *gin.Context) {
-	req := schema.ArticlePayload{}
-
-	if c.handler.BindAndCheck(ctx, req) {
+func (c *ArticleController) CreateArticle(ctx *gin.Context) {
+	var request schema.ArticlePayload
+	if c.handler.BindAndCheck(ctx, &request) {
 		return
 	}
 
-	//v := validator.New()
-	//v.CheckNotBlank(requestPayload.Title, "title", "must be provided")
-	//v.CheckNotBlank(requestPayload.Description, "description", "must be provided")
-	//v.CheckNotBlank(requestPayload.Body, "body", "must be provided")
-	//
-	//if !v.IsValid() {
-	//	app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-	//	return
-	//}
+	request.Title = strings.TrimSpace(request.Title)
+	request.Description = strings.TrimSpace(request.Description)
+	request.Body = strings.TrimSpace(request.Body)
 
-	var createdTags []*models.Tag
-	if req.TagList != nil && len(*req.TagList) > 0 {
-		for _, tag := range *req.TagList {
-			v.CheckNotBlank(tag, "tag", "must be provided")
-		}
-		if !v.IsValid() {
-			app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-			return
-		}
-
-		var tagModels []*models.Tag
-		for _, tag := range *req.TagList {
-			tagModels = append(tagModels, &models.Tag{Name: strings.TrimSpace(tag)})
-		}
-
-		user, _ := app.auth.GetAuthenticatedUser(r)
-		article, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (*models.Article, error) {
-			tags, err := app.core.CreateTag(txCtx, tagModels)
-			if err != nil {
-				switch {
-				case errors.Is(err, core.ErrDuplicatedSlug):
-					app.internalErrorResponse(w, r, err)
-					return nil, err
-				default:
-					app.internalErrorResponse(w, r, err)
-					return nil, err
-				}
-			}
-			createdTags = tags
-			slug := app.core.CreateSlug(req.Title)
-
-			return app.core.CreateArticle(txCtx, &models.Article{
-				Title:       req.Title,
-				Description: req.Description,
-				Body:        req.Body,
-				Slug:        slug,
-				AuthorID:    user.ID,
-			}, createdTags)
+	if request.Title == "" || request.Description == "" || request.Body == "" {
+		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+			Code:         http.StatusUnprocessableEntity,
+			ErrorMessage: "title, description, and body are required",
 		})
+		return
+	}
 
-		if err != nil {
-			switch {
-			case errors.Is(err, core.ErrDuplicatedSlug):
-				v.AddError("slug", "Slug already exists")
-				app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors, ErrorStack: err})
-				return
-			default:
-				app.internalErrorResponse(w, r, err)
-				return
+	user, err := auth.GetAuthenticatedUser(ctx)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+			Code:         http.StatusUnauthorized,
+			ErrorMessage: "authentication required",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	tagModels := make([]*models.Tag, 0)
+	if request.TagList != nil {
+		seen := make(map[string]struct{}, len(*request.TagList))
+		for _, value := range *request.TagList {
+			name := strings.TrimSpace(value)
+			if name == "" {
+				continue
 			}
-		}
+			if _, exists := seen[name]; exists {
+				continue
+			}
 
-		response, err := prepareSingleArticleResponse(r, article, app, user)
-		if err != nil {
-			app.internalErrorResponse(w, r, err)
-			return
-		}
-
-		if err := app.writeJSON(w, http.StatusAccepted, response, nil); err != nil {
-			app.internalErrorResponse(w, r, err)
+			seen[name] = struct{}{}
+			tagModels = append(tagModels, &models.Tag{Name: name})
 		}
 	}
+
+	article, err := c.core.CreateArticle(ctx, &models.Article{
+		Title:       request.Title,
+		Description: request.Description,
+		Body:        request.Body,
+		Slug:        c.core.CreateSlug(request.Title),
+		AuthorID:    user.ID,
+	}, tagModels)
+	if err != nil {
+		if errors2.Is(err, core.ErrDuplicatedSlug) {
+			c.handler.HandleResponse(ctx, nil, &errors.AppError{
+				Code:         http.StatusUnprocessableEntity,
+				ErrorMessage: "article slug already exists",
+				ErrorStack:   err,
+			})
+			return
+		}
+
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	response, err := prepareSingleArticleResponse(ctx, article, 1, c.core, user)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, response)
 }
 
 func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
