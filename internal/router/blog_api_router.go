@@ -37,6 +37,6 @@ func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {
 	group.DELETE("/profiles/:username/follow", b.profileController.Unfollow)
 
 	group.GET("/articles/feed", b.articleController.Feed)
-	group.POST("/articles/articles", b.articleController.CreateArticle)
+	group.POST("/articles", b.articleController.CreateArticle)
 
 }

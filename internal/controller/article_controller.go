@@ -183,14 +183,6 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 	request.Description = strings.TrimSpace(request.Description)
 	request.Body = strings.TrimSpace(request.Body)
 
-	if request.Title == "" || request.Description == "" || request.Body == "" {
-		c.handler.HandleResponse(ctx, nil, &errors.AppError{
-			Code:         http.StatusUnprocessableEntity,
-			ErrorMessage: "title, description, and body are required",
-		})
-		return
-	}
-
 	user, err := auth.GetAuthenticatedUser(ctx)
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, &errors.AppError{
