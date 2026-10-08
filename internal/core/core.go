@@ -3,8 +3,9 @@ package core
 import (
 	"database/sql"
 	"errors"
-	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"log/slog"
+
+	"github.com/siahsang/blog/internal/utils/databaseutils"
 )
 
 type Core struct {

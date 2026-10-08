@@ -22,7 +22,6 @@ func NewSQLTemplate(db *sql.DB, timeout time.Duration) *SQLTemplate {
 }
 
 func ExecuteQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
-	var cancel context.CancelFunc
 	ctx, cancel, err := contextTimeoutAware(sqlTemplate.Timeout, ctx)
 	if err != nil {
 		return nil, err
