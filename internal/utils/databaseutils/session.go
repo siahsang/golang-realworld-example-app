@@ -81,7 +81,7 @@ func (s *sqlSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (Session,
 
 // DoTransactionally executes a function 'f' within a new transaction.
 // It handles the begin, commit, and rollback logic.
-func (s *sqlSession) DoTransactionally(ctx context.Context, fn func(txCtx context.Context) error) error {
+func (s *sqlSession) DoTransactionally(ctx context.Context, fn func(txCtx context.Context) error) (err error) {
 	// 1. Directly begin a new *sql.Tx
 	session, err := s.BeginTx(ctx, nil)
 	if err != nil {
@@ -116,7 +116,8 @@ func (s *sqlSession) DoTransactionally(ctx context.Context, fn func(txCtx contex
 
 	// 5. No explicit commit/rollback here. The defer handles it.
 	// The value of 'err' will be returned as set by 'fn' or by a failed commit in the defer.
-	return err
+
+	return
 }
 
 func (s *sqlSession) Rollback() error {
