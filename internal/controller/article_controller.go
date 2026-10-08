@@ -19,6 +19,7 @@ import (
 	"github.com/siahsang/blog/internal/utils/config"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/functional"
+	"github.com/siahsang/blog/internal/utils/stringutils"
 	"github.com/siahsang/blog/models"
 )
 
@@ -210,31 +211,28 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 		}
 	}
 
-	slug, err := c.core.CreateSlug(request.Title, ctx)
-	if err != nil {
-		c.handler.HandleResponse(ctx, nil, err)
-		return
-	}
+	var article *models.Article
+	slug := c.core.CreateSlug(request.Title)
+	for {
+		article, err = c.core.CreateArticle(ctx, &models.Article{
+			Title:       request.Title,
+			Description: request.Description,
+			Body:        request.Body,
+			Slug:        slug,
+			AuthorID:    user.ID,
+		}, tagModels)
 
-	article, err := c.core.CreateArticle(ctx, &models.Article{
-		Title:       request.Title,
-		Description: request.Description,
-		Body:        request.Body,
-		Slug:        slug,
-		AuthorID:    user.ID,
-	}, tagModels)
-	if err != nil {
-		if errors2.Is(err, core.ErrDuplicatedSlug) {
-			c.handler.HandleResponse(ctx, nil, &errors.AppError{
-				Code:         http.StatusUnprocessableEntity,
-				ErrorMessage: "article slug already exists",
-				ErrorStack:   err,
-			})
+		if err != nil {
+			if errors2.Is(err, core.ErrDuplicatedSlug) {
+				slug = slug + "-" + stringutils.RandString(5)
+				continue
+			}
+
+			c.handler.HandleResponse(ctx, nil, err)
 			return
 		}
 
-		c.handler.HandleResponse(ctx, nil, err)
-		return
+		break
 	}
 
 	response, err := prepareSingleArticleResponse(ctx, article, 1, c.core, user)

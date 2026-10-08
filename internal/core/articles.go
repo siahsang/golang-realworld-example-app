@@ -218,7 +218,7 @@ func (c *Core) FavouriteArticleCount(context context.Context, articleId int64) (
 	return result, nil
 }
 
-func (c *Core) CreateSlug(title string, ctx context.Context) (string, error) {
+func (c *Core) CreateSlug(title string) string {
 	slug := strings.ToLower(title)
 
 	slug = strings.ReplaceAll(slug, " ", "-")
@@ -235,21 +235,7 @@ func (c *Core) CreateSlug(title string, ctx context.Context) (string, error) {
 
 	slug = strings.Trim(slug, "-")
 
-	for {
-		exist, err := c.isSlugExist(slug, ctx)
-		if err != nil {
-			return "", err
-		}
-
-		if !exist {
-			break
-		} else {
-			c.log.Info("slug already exist tring again", "slug", slug)
-			slug = fmt.Sprintf("%s-%s", slug, time.Now().Format("2006-01-02")[:8])
-		}
-	}
-
-	return slug, nil
+	return slug
 }
 
 func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, authorUserName, favoriteBy string) ([]*models.Article, int64, error) {
@@ -452,25 +438,6 @@ func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.A
 	}
 
 	return result, nil
-}
-
-func (c *Core) isSlugExist(slug string, ctx context.Context) (bool, error) {
-
-	const articleCountBySlug = `SELECT COUNT(ID) FROM articles WHERE slug=$1`
-
-	exist, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, articleCountBySlug, func(rows *sql.Rows) (bool, error) {
-		var count int
-		if err := rows.Scan(&count); err != nil {
-			return false, xerrors.New(err)
-		}
-		return count > 0, nil
-	}, slug)
-
-	if err != nil {
-		return false, err
-	}
-
-	return exist, nil
 }
 
 func (c *Core) FavoriteArticle(context context.Context, slug string, user *auth.User) (*models.Article, error) {

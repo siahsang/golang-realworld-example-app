@@ -2,6 +2,7 @@ package stringutils
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 
 	"github.com/siahsang/blog/internal/utils/functional"
@@ -45,4 +46,13 @@ func INClause[T any](list []T, startIndex int) (placeholders []string, args []an
 	}
 
 	return placeholders, args
+}
+
+func RandString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }
