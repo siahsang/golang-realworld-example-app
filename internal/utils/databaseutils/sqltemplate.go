@@ -23,7 +23,7 @@ func NewSQLTemplate(db *sql.DB, timeout time.Duration) *SQLTemplate {
 
 func ExecuteQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
 	var cancel context.CancelFunc
-	ctx, cancel, err := contextTimeOutAware(sqlTemplate.Timeout, ctx, cancel)
+	ctx, cancel, err := contextTimeoutAware(sqlTemplate.Timeout, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func ExecuteSingleQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sq
 
 func ExecuteNonQuery(sqlTemplate *SQLTemplate, ctx context.Context, sql string, args ...any) (int64, error) {
 	var cancel context.CancelFunc
-	ctx, cancel, err := contextTimeOutAware(sqlTemplate.Timeout, ctx, cancel)
+	ctx, cancel, err := contextTimeoutAware(sqlTemplate.Timeout, ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -83,19 +83,22 @@ func ExecuteNonQuery(sqlTemplate *SQLTemplate, ctx context.Context, sql string, 
 	return affected, err
 }
 
-func contextTimeOutAware(duration time.Duration, ctx context.Context, cancel context.CancelFunc) (context.Context, context.CancelFunc, error) {
-	if duration > 0 {
-		if deadline, ok := ctx.Deadline(); ok {
-			remaining := time.Until(deadline)
-			if remaining <= 0 {
-				return nil, nil, ctx.Err()
-			}
-			if remaining > duration {
-				ctx, cancel = context.WithTimeout(ctx, duration)
-			}
-		} else {
-			ctx, cancel = context.WithTimeout(ctx, duration)
-		}
+// contextTimeoutAware returns an error if ctx is already done. For a positive
+// duration, it derives a timeout context; the parent's earlier deadline still
+// takes precedence. For a non-positive duration, it returns ctx unchanged with
+// a no-op cancel function so callers can always defer cancel safely.
+func contextTimeoutAware(duration time.Duration, ctx context.Context) (context.Context, context.CancelFunc, error) {
+	// Avoid starting database work when the caller's context is already done.
+	if err := ctx.Err(); err != nil {
+		return nil, nil, ctx.Err()
 	}
-	return ctx, cancel, nil
+
+	// A non-positive duration disables the additional query timeout.
+	if duration <= 0 {
+		return ctx, func() {}, nil
+	}
+
+	childCtx, cancel := context.WithTimeout(ctx, duration)
+
+	return childCtx, cancel, nil
 }
