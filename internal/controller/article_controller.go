@@ -210,11 +210,17 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 		}
 	}
 
+	slug, err := c.core.CreateSlug(request.Title, ctx)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
 	article, err := c.core.CreateArticle(ctx, &models.Article{
 		Title:       request.Title,
 		Description: request.Description,
 		Body:        request.Body,
-		Slug:        c.core.CreateSlug(request.Title),
+		Slug:        slug,
 		AuthorID:    user.ID,
 	}, tagModels)
 	if err != nil {
