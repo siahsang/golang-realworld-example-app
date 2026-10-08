@@ -45,6 +45,7 @@ func (h *Handler) HandleResponse(ctx *gin.Context, data any, err error) {
 }
 
 func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
+	// Malformed JSON or incompatible JSON types.
 	if err := ctx.ShouldBind(data); err != nil {
 		h.logger.Error("http_handle BindAndCheck fail", "error", err)
 		appError := &myblogError.AppError{
@@ -56,11 +57,11 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 		return true
 	}
 
-	// do validation
+	// Struct validation: required, notblank, email, etc.
 	errFields, err := h.validator.Check(data)
 	if err != nil {
 		appError := &myblogError.AppError{
-			Code:         http.StatusBadRequest,
+			Code:         http.StatusUnprocessableEntity,
 			ErrorMessage: "Invalid request payload",
 			ErrorStack:   err,
 			ErrorDetails: errFields,
