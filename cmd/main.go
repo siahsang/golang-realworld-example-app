@@ -29,7 +29,7 @@ type application struct {
 	logger             *slog.Logger
 	wg                 sync.WaitGroup
 	db                 *sql.DB
-	session            databaseutils.Session
+	session            *databaseutils.SQLSession
 	authUserMiddleware *middleware.AuthUserMiddleware
 }
 
@@ -80,7 +80,8 @@ func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
 	}
 
 	uiRouter := router.NewUIRouter(logger)
-	core := core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	session := databaseutils.NewSession(db)
+	core := core.NewCore(logger, session, databaseutils.NewSQLTemplate(db, 3*time.Second))
 	userController := controller.NewUserController(
 		core,
 		logger, cfg)
@@ -103,7 +104,7 @@ func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
 		logger:             logger,
 		wg:                 sync.WaitGroup{},
 		db:                 db,
-		session:            databaseutils.NewSession(db),
+		session:            session,
 		config:             cfg,
 		authUserMiddleware: authUserMiddleware,
 	}

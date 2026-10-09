@@ -28,7 +28,7 @@ type TestApplication struct {
 	Logger             *slog.Logger
 	WG                 sync.WaitGroup
 	DB                 *sql.DB
-	Session            databaseutils.Session
+	Session            *databaseutils.SQLSession
 	AuthUserMiddleware *middleware.AuthUserMiddleware
 }
 
@@ -45,7 +45,8 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 	}
 
 	uiRouter := router.NewUIRouter(logger)
-	coreInstance := core.NewCore(db, logger, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	session := databaseutils.NewSession(db)
+	coreInstance := core.NewCore(logger, session, databaseutils.NewSQLTemplate(db, 3*time.Second))
 	authInstance := auth.New(cfg)
 	userController := controller.NewUserController(
 		coreInstance,
@@ -66,7 +67,7 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 		Logger:             logger,
 		WG:                 sync.WaitGroup{},
 		DB:                 db,
-		Session:            databaseutils.NewSession(db),
+		Session:            session,
 		AuthUserMiddleware: authUserMiddleware,
 	}
 

@@ -21,7 +21,12 @@ var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
 var ErrDuplicatedArticleTag = xerrors.Message("Duplicate article tag")
 
 func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
-	databaseutils.NewSession(c.sqlTemplate.DB)
+	return c.session.DoTransactionally(ctx, func(txCtx context.Context) (*models.Article, error) {
+		return c.createArticle(txCtx, article, tagModels)
+	})
+}
+
+func (c *Core) createArticle(ctx context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
 	insertSQL := `
 		INSERT INTO articles (slug,title,description,body,created_at,updated_at,author_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
