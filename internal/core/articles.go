@@ -22,74 +22,71 @@ var ErrDuplicatedArticleTag = xerrors.Message("Duplicate article tag")
 
 func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
 	return c.session.DoTransactionally(ctx, func(txCtx context.Context) (*models.Article, error) {
-		return c.createArticle(txCtx, article, tagModels)
-	})
-}
 
-func (c *Core) createArticle(ctx context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
-	insertSQL := `
+		insertSQL := `
 		INSERT INTO articles (slug,title,description,body,created_at,updated_at,author_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 
-	newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
-		var article models.Article
-		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
-			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
-			return nil, xerrors.New(err)
-		}
-		return &article, nil
-	}, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now(), article.AuthorID)
+		newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, txCtx, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
+			var article models.Article
+			if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+				&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
+				return nil, xerrors.New(err)
+			}
+			return &article, nil
+		}, article.Slug, article.Title, article.Description, article.Body, time.Now(), time.Now(), article.AuthorID)
 
-	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
-			return nil, xerrors.New(ErrDuplicatedSlug)
-		default:
-			return nil, xerrors.New(err)
-		}
-	}
-
-	var savedTagList []*models.Tag
-	if len(tagModels) > 0 {
-		savedTagList, err = c.CreateTag(ctx, tagModels)
 		if err != nil {
-			return nil, xerrors.New(err)
+			switch {
+			case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
+				return nil, xerrors.New(ErrDuplicatedSlug)
+			default:
+				return nil, xerrors.New(err)
+			}
 		}
-	}
 
-	for _, tag := range savedTagList {
-		insertSQL := `
+		var savedTagList []*models.Tag
+		if len(tagModels) > 0 {
+			savedTagList, err = c.CreateTag(txCtx, tagModels)
+			if err != nil {
+				return nil, xerrors.New(err)
+			}
+		}
+
+		for _, tag := range savedTagList {
+			insertSQL := `
 			INSERT INTO articles_tags (article_id, tag_id)
 			VALUES ($1, $2)
 			RETURNING article_id,tag_id
 		`
 
-		type QueryResult struct {
-			ArticleID int64
-			TagID     int64
-		}
-		_, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
-			qr := &QueryResult{}
-			if err := rows.Scan(&qr.ArticleID, &qr.TagID); err != nil {
-				return nil, xerrors.New(err)
+			type QueryResult struct {
+				ArticleID int64
+				TagID     int64
 			}
-			return qr, nil
-		}, newArticle[0].ID, tag.ID)
+			_, err := databaseutils.ExecuteQuery(c.sqlTemplate, txCtx, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
+				qr := &QueryResult{}
+				if err := rows.Scan(&qr.ArticleID, &qr.TagID); err != nil {
+					return nil, xerrors.New(err)
+				}
+				return qr, nil
+			}, newArticle[0].ID, tag.ID)
 
-		if err != nil {
-			switch {
-			case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
-				return nil, xerrors.New(ErrDuplicatedArticleTag)
-			default:
-				return nil, xerrors.New(err)
+			if err != nil {
+				switch {
+				case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
+					return nil, xerrors.New(ErrDuplicatedArticleTag)
+				default:
+					return nil, xerrors.New(err)
+				}
+
 			}
-
 		}
-	}
 
-	return newArticle[0], nil
+		return newArticle[0], nil
+	})
 }
 
 func (c *Core) IsFavouriteArticleByUser(context context.Context, articleId int64, user *auth.User) (bool, error) {
