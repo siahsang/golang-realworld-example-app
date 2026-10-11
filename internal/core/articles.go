@@ -100,9 +100,9 @@ func (c *Core) IsFavouriteArticleByUser(context context.Context, articleId int64
 		)
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (bool, error) {
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(row *sql.Row) (bool, error) {
 		var isFavourite bool
-		if err := rows.Scan(&isFavourite); err != nil {
+		if err := row.Scan(&isFavourite); err != nil {
 			return false, xerrors.New(err)
 		}
 		return isFavourite, nil

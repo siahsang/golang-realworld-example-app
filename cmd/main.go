@@ -81,7 +81,7 @@ func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
 
 	uiRouter := router.NewUIRouter(logger)
 	session := databaseutils.NewSession(db)
-	core := core.NewCore(logger, session, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	core := core.NewCore(logger, session, databaseutils.NewDBStore(db, 3*time.Second))
 	userController := controller.NewUserController(
 		core,
 		logger, cfg)

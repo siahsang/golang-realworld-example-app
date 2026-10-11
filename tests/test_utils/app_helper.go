@@ -46,7 +46,7 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 
 	uiRouter := router.NewUIRouter(logger)
 	session := databaseutils.NewSession(db)
-	coreInstance := core.NewCore(logger, session, databaseutils.NewSQLTemplate(db, 3*time.Second))
+	coreInstance := core.NewCore(logger, session, databaseutils.NewDBStore(db, 3*time.Second))
 	authInstance := auth.New(cfg)
 	userController := controller.NewUserController(
 		coreInstance,

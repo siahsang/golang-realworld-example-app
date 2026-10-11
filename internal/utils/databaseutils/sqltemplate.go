@@ -9,26 +9,26 @@ import (
 
 var ErrNoRowsFound = fmt.Errorf("no Rows Found")
 
-type SQLTemplate struct {
+type DBStore struct {
 	DB      *sql.DB
 	Timeout time.Duration
 }
 
-func NewSQLTemplate(db *sql.DB, timeout time.Duration) *SQLTemplate {
-	return &SQLTemplate{
+func NewDBStore(db *sql.DB, timeout time.Duration) *DBStore {
+	return &DBStore{
 		DB:      db,
 		Timeout: timeout,
 	}
 }
 
-func ExecuteQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
-	ctx, cancel, err := contextTimeoutAware(sqlTemplate.Timeout, ctx)
+func ExecuteQuery[T any](dbStore *DBStore, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
+	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer cancel()
 
-	executor := GetSQLExecutor(ctx, sqlTemplate.DB)
+	executor := GetSQLExecutor(ctx, dbStore.DB)
 	rows, err := executor.QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -50,29 +50,29 @@ func ExecuteQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql stri
 	return results, nil
 }
 
-func ExecuteSingleQuery[T any](sqlTemplate *SQLTemplate, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) (T, error) {
-	query, err := ExecuteQuery(sqlTemplate, ctx, sql, extractor, args...)
+func ExecuteSingleQuery[T any](dbStore *DBStore, ctx context.Context, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
+	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, ctx)
 	if err != nil {
-		var empty T
-		return empty, err
-	} else {
-		if len(query) == 0 {
-			var empty T
-			return empty, ErrNoRowsFound
-		}
-		return query[0], nil
+		var zeroT T
+		return zeroT, err
 	}
+	defer cancel()
+
+	executor := GetSQLExecutor(ctx, dbStore.DB)
+	row := executor.QueryRowContext(ctx, query, args...)
+
+	return extractor(row)
 }
 
-func ExecuteNonQuery(sqlTemplate *SQLTemplate, ctx context.Context, sql string, args ...any) (int64, error) {
+func ExecuteNonQuery(dbStore *DBStore, ctx context.Context, sql string, args ...any) (int64, error) {
 	var cancel context.CancelFunc
-	ctx, cancel, err := contextTimeoutAware(sqlTemplate.Timeout, ctx)
+	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer cancel()
 
-	executor := GetSQLExecutor(ctx, sqlTemplate.DB)
+	executor := GetSQLExecutor(ctx, dbStore.DB)
 	result, err := executor.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return -1, err

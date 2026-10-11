@@ -24,9 +24,11 @@ func OpenDBConnection(logger *slog.Logger, dsn string) (*sql.DB, error) {
 
 	db.SetConnMaxIdleTime(duration)
 
-	context.WithTimeout(context.Background(), 5*time.Second)
-	err = db.PingContext(context.Background())
+	ctxWithTimeOut, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFunc()
+	err = db.PingContext(ctxWithTimeOut)
 	if err != nil {
+		err := db.Close()
 		return nil, err
 	}
 	logger.Info("Database connection established successfully")
