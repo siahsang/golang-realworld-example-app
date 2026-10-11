@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// OpenDBConnection todo: make connection pool configurable
 func OpenDBConnection(logger *slog.Logger, dsn string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -17,6 +18,7 @@ func OpenDBConnection(logger *slog.Logger, dsn string) (*sql.DB, error) {
 	}
 
 	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(100)
 
 	duration, err := time.ParseDuration("10s")
 	if err != nil {
