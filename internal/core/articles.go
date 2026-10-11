@@ -89,7 +89,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 	})
 }
 
-func (c *Core) IsFavouriteArticleByUser(context context.Context, articleId int64, user *auth.User) (bool, error) {
+func (c *Core) IsFavouriteArticleByUser(ctx context.Context, articleID int64, user *auth.User) (bool, error) {
 	if user == nil {
 		return false, nil
 	}
@@ -100,14 +100,19 @@ func (c *Core) IsFavouriteArticleByUser(context context.Context, articleId int64
 		)
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(row *sql.Row) (bool, error) {
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, selectSQL, func(row *sql.Row) (bool, error) {
 		var isFavourite bool
-		if err := row.Scan(&isFavourite); err != nil {
+		err := row.Scan(&isFavourite)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		} else if err != nil {
 			return false, xerrors.New(err)
 		}
+
 		return isFavourite, nil
 
-	}, user.ID, articleId)
+	}, user.ID, articleID)
 
 	if err != nil {
 		return false, xerrors.New(err)
