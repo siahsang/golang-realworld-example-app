@@ -107,15 +107,6 @@ func (s *SQLSession) Context() context.Context {
 	return s.ctx
 }
 
-// GetExecutor returns the current transaction (if active) or the underlying DB pool.
-// This is the function called by repositories.
-func (s *SQLSession) GetExecutor() SQLExecutor {
-	if s.tx != nil {
-		return s.tx // Return the active *sql.Tx if present
-	}
-	return s.db // If no active transaction, return the *sql.DB pool
-}
-
 // GetSQLExecutor is a public helper function for repositories to retrieve the
 // correct database handle from the context.
 // If a transaction (*sql.Tx) is present in the context, it returns that transaction.
