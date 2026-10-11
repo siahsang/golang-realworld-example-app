@@ -3,11 +3,11 @@ package databaseutils
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"time"
 )
 
-var ErrNoRowsFound = fmt.Errorf("no Rows Found")
+var ErrNoRowsFound = errors.New("no rows found")
 
 type DBStore struct {
 	DB      *sql.DB
@@ -61,7 +61,12 @@ func ExecuteSingleQuery[T any](dbStore *DBStore, ctx context.Context, query stri
 	executor := GetSQLExecutor(ctx, dbStore.DB)
 	row := executor.QueryRowContext(ctx, query, args...)
 
-	return extractor(row)
+	result, err := extractor(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		var zeroT T
+		return zeroT, ErrNoRowsFound
+	}
+	return result, err
 }
 
 func ExecuteNonQuery(dbStore *DBStore, ctx context.Context, sql string, args ...any) (int64, error) {

@@ -26,8 +26,8 @@ func (c *Core) CreateNewUser(context context.Context, user *auth.User) error {
 		RETURNING id
 `
 	args := []any{user.Username, user.Email, user.Password}
-	_, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
-		if err := rows.Scan(&user.ID); err != nil {
+	_, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(row *sql.Row) (*auth.User, error) {
+		if err := row.Scan(&user.ID); err != nil {
 			return nil, xerrors.New(err)
 		}
 		return user, nil
@@ -54,10 +54,10 @@ func (c *Core) GetUserByEmail(context context.Context, email string) (*auth.User
 		WHERE email = $1
 	`
 
-	user, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+	user, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(row *sql.Row) (*auth.User, error) {
 		var user = &auth.User{}
 
-		if err := rows.Scan(
+		if err := row.Scan(
 			&user.ID,
 			&user.Email,
 			&user.Username,
@@ -89,10 +89,10 @@ func (c *Core) GetUserByUsername(context context.Context, username string) (*aut
 		WHERE username = $1
 	`
 
-	user, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+	user, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(row *sql.Row) (*auth.User, error) {
 		var user = &auth.User{}
 
-		if err := rows.Scan(
+		if err := row.Scan(
 			&user.ID,
 			&user.Email,
 			&user.Username,
@@ -171,10 +171,10 @@ func (c *Core) UpdateUser(context context.Context, user *auth.User) (*auth.User,
 	`
 
 	args := []any{user.Bio, user.Image, user.ID}
-	returningUser, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*auth.User, error) {
+	returningUser, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(row *sql.Row) (*auth.User, error) {
 		var user = &auth.User{}
 
-		if err := rows.Scan(&user.ID,
+		if err := row.Scan(&user.ID,
 			&user.ID,
 			&user.Email,
 			&user.Username,

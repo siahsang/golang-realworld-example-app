@@ -26,9 +26,10 @@ func IsUserNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, NoRecordFound) {
+	if errors.Is(err, sql.ErrNoRows) ||
+		errors.Is(err, databaseutils.ErrNoRowsFound) ||
+		errors.Is(err, NoRecordFound) {
 		return true
 	}
-	errStr := err.Error()
-	return errStr == "no Rows Found" || errStr == "No record found"
+	return false
 }

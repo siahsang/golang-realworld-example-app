@@ -102,11 +102,7 @@ func (c *Core) IsFavouriteArticleByUser(ctx context.Context, articleID int64, us
 
 	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, selectSQL, func(row *sql.Row) (bool, error) {
 		var isFavourite bool
-		err := row.Scan(&isFavourite)
-
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		} else if err != nil {
+		if err := row.Scan(&isFavourite); err != nil {
 			return false, xerrors.New(err)
 		}
 
@@ -210,9 +206,9 @@ func (c *Core) FavouriteArticleCount(context context.Context, articleId int64) (
 		SELECT COUNT(*) FROM favourite_articles WHERE article_id = $1
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (int64, error) {
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(row *sql.Row) (int64, error) {
 		var favouriteArticleCount int64
-		if err := rows.Scan(&favouriteArticleCount); err != nil {
+		if err := row.Scan(&favouriteArticleCount); err != nil {
 			return 0, xerrors.New(err)
 		}
 		return favouriteArticleCount, nil
@@ -304,9 +300,9 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 		countSQL += " WHERE " + strings.Join(whereClause, " AND ")
 	}
 
-	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, countSQL, func(rows *sql.Rows) (int64, error) {
+	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, countSQL, func(row *sql.Row) (int64, error) {
 		var totalCount int64
-		if err := rows.Scan(&totalCount); err != nil {
+		if err := row.Scan(&totalCount); err != nil {
 			return -1, xerrors.New(err)
 		}
 		return totalCount, nil
@@ -367,9 +363,9 @@ func (c *Core) FeedArticle(ctx context.Context, username string, limit, offset i
 	WHERE a.author_id IN (%s)
 `, inClause)
 
-	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, countSQL, func(rows *sql.Rows) (int64, error) {
+	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, countSQL, func(row *sql.Row) (int64, error) {
 		var totalCount int64
-		if err := rows.Scan(&totalCount); err != nil {
+		if err := row.Scan(&totalCount); err != nil {
 			return -1, xerrors.New(err)
 		}
 		return totalCount, nil
@@ -408,9 +404,9 @@ func (c *Core) UpdateArticle(context context.Context, article *models.Article) (
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 	args := []any{article.Title, article.Description, article.Body, time.Now(), article.ID}
-	returningArticle, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*models.Article, error) {
+	returningArticle, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(row *sql.Row) (*models.Article, error) {
 		var article = &models.Article{}
-		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+		if err := row.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
 			return nil, xerrors.New(err)
 		}
@@ -431,9 +427,9 @@ func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.A
 		WHERE a.slug = $1
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
+	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(row *sql.Row) (*models.Article, error) {
 		var article = &models.Article{}
-		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
+		if err := row.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
 			return nil, xerrors.New(err)
 		}

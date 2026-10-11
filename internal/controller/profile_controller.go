@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
-	errors2 "github.com/siahsang/blog/internal/errors"
 	"github.com/siahsang/blog/internal/handler"
+	errors2 "github.com/siahsang/blog/internal/utils/httperror"
 	"github.com/siahsang/blog/internal/validator"
 
 	"log/slog"
@@ -81,7 +81,7 @@ func (u *ProfileController) Follow(ctx *gin.Context) {
 	username := strings.TrimSpace(ctx.Param("username"))
 
 	if username == "" {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code: http.StatusBadRequest,
 			ErrorDetails: []*validator.FormErrorField{
 				{
@@ -95,7 +95,7 @@ func (u *ProfileController) Follow(ctx *gin.Context) {
 
 	authenticatedUser, err := auth.GetAuthenticatedUser(ctx)
 	if err != nil {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code:         http.StatusUnauthorized,
 			ErrorMessage: "Authentication required",
 			ErrorStack:   err,
@@ -107,7 +107,7 @@ func (u *ProfileController) Follow(ctx *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code: http.StatusNotFound,
 				ErrorDetails: []*validator.FormErrorField{
 					{
@@ -118,7 +118,7 @@ func (u *ProfileController) Follow(ctx *gin.Context) {
 			})
 			return
 		case errors.Is(err, core.CannotFollowSelf):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code: http.StatusBadRequest,
 				ErrorDetails: []*validator.FormErrorField{
 					{
@@ -129,7 +129,7 @@ func (u *ProfileController) Follow(ctx *gin.Context) {
 			})
 			return
 		case errors.Is(err, core.UserIsAlreadyFollowed):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code: http.StatusBadRequest,
 				ErrorDetails: []*validator.FormErrorField{
 					{
@@ -152,7 +152,7 @@ func (u *ProfileController) Unfollow(ctx *gin.Context) {
 	username := strings.TrimSpace(ctx.Param("username"))
 
 	if username == "" {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code: http.StatusBadRequest,
 			ErrorDetails: []*validator.FormErrorField{
 				{
@@ -166,7 +166,7 @@ func (u *ProfileController) Unfollow(ctx *gin.Context) {
 
 	authenticatedUser, err := auth.GetAuthenticatedUser(ctx)
 	if err != nil {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code:         http.StatusUnauthorized,
 			ErrorMessage: "Authentication required",
 			ErrorStack:   err,
@@ -178,7 +178,7 @@ func (u *ProfileController) Unfollow(ctx *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code: http.StatusNotFound,
 				ErrorDetails: []*validator.FormErrorField{
 					{
@@ -189,7 +189,7 @@ func (u *ProfileController) Unfollow(ctx *gin.Context) {
 			})
 			return
 		case errors.Is(err, core.UserIsNotFollowed):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code: http.StatusBadRequest,
 				ErrorDetails: []*validator.FormErrorField{
 					{

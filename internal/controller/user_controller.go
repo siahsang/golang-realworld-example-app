@@ -10,10 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
-	errors2 "github.com/siahsang/blog/internal/errors"
 	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/schema"
 	"github.com/siahsang/blog/internal/utils/config"
+	errors2 "github.com/siahsang/blog/internal/utils/httperror"
 )
 
 type UserController struct {
@@ -44,7 +44,7 @@ func (u *UserController) Login(ctx *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, core.NoRecordFound):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code:       http.StatusBadRequest,
 				ErrorStack: err,
 			})
@@ -56,14 +56,14 @@ func (u *UserController) Login(ctx *gin.Context) {
 	}
 	match, err := user.IsPasswordMatch(req.Password)
 	if err != nil {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code:       http.StatusInternalServerError,
 			ErrorStack: err,
 		})
 		return
 	}
 	if !match {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			ErrorMessage: "Invalid credentials",
 			Code:         http.StatusUnauthorized,
 			ErrorStack:   err,
@@ -75,7 +75,7 @@ func (u *UserController) Login(ctx *gin.Context) {
 	token, err := user.GenerateToken(time.Hour*24*1, u.config.JWTSecret)
 	user.Token = token
 	if err != nil {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code:       http.StatusInternalServerError,
 			ErrorStack: err,
 		})
@@ -111,14 +111,14 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, core.ErrDuplicateUsername):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code:         http.StatusBadRequest,
 				ErrorStack:   err,
 				ErrorMessage: "Username is already in use",
 			})
 			return
 		case errors.Is(err, core.ErrDuplicateEmail):
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code:         http.StatusBadRequest,
 				ErrorStack:   err,
 				ErrorMessage: "Email address is already in use",
@@ -126,7 +126,7 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 
 			return
 		default:
-			u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+			u.handler.HandleResponse(ctx, nil, &errors2.Error{
 				Code:       http.StatusInternalServerError,
 				ErrorStack: err,
 			})
@@ -136,7 +136,7 @@ func (u *UserController) CreateUser(ctx *gin.Context) {
 
 	token, err := user.GenerateToken(time.Hour*24*1, u.config.JWTSecret)
 	if err != nil {
-		u.handler.HandleResponse(ctx, nil, &errors2.AppError{
+		u.handler.HandleResponse(ctx, nil, &errors2.Error{
 			Code:       http.StatusInternalServerError,
 			ErrorStack: err,
 		})

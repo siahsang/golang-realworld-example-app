@@ -3,6 +3,7 @@ package databaseutils
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -28,8 +29,8 @@ func OpenDBConnection(logger *slog.Logger, dsn string) (*sql.DB, error) {
 	defer cancelFunc()
 	err = db.PingContext(ctxWithTimeOut)
 	if err != nil {
-		err := db.Close()
-		return nil, err
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 	logger.Info("Database connection established successfully")
 

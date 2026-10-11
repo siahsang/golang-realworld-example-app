@@ -1,7 +1,7 @@
 package controller
 
 import (
-	errors2 "errors"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -11,7 +11,6 @@ import (
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/core"
-	"github.com/siahsang/blog/internal/errors"
 	"github.com/siahsang/blog/internal/filter"
 	"github.com/siahsang/blog/internal/handler"
 	"github.com/siahsang/blog/internal/schema"
@@ -19,6 +18,7 @@ import (
 	"github.com/siahsang/blog/internal/utils/config"
 	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/functional"
+	"github.com/siahsang/blog/internal/utils/httperror"
 	"github.com/siahsang/blog/internal/utils/stringutils"
 	"github.com/siahsang/blog/models"
 )
@@ -66,7 +66,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	offset := query.Offset
 
 	if limit <= 0 {
-		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid limit",
 		})
@@ -74,7 +74,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	}
 
 	if offset < 0 {
-		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid offset",
 		})
@@ -115,7 +115,7 @@ func (c *ArticleController) Feed(ctx *gin.Context) {
 	offset := query.Offset
 
 	if limit <= 0 {
-		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid limit",
 		})
@@ -123,7 +123,7 @@ func (c *ArticleController) Feed(ctx *gin.Context) {
 	}
 
 	if offset < 0 {
-		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "invalid offset",
 		})
@@ -152,8 +152,8 @@ func (c *ArticleController) GetArticleBySlug(ctx *gin.Context) {
 	article, err := c.core.GetArticleBySlug(ctx, slug)
 
 	if err != nil {
-		if errors2.Is(err, databaseutils.ErrNoRowsFound) {
-			c.handler.HandleResponse(ctx, nil, &errors.AppError{
+		if errors.Is(err, databaseutils.ErrNoRowsFound) {
+			c.handler.HandleResponse(ctx, nil, &httperror.Error{
 				Code:         http.StatusNotFound,
 				ErrorMessage: "article not found",
 			})
@@ -186,7 +186,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 
 	user, err := auth.GetAuthenticatedUser(ctx)
 	if err != nil {
-		c.handler.HandleResponse(ctx, nil, &errors.AppError{
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
 			Code:         http.StatusUnauthorized,
 			ErrorMessage: "authentication required",
 			ErrorStack:   err,
@@ -223,7 +223,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 		}, tagModels)
 
 		if err != nil {
-			if errors2.Is(err, core.ErrDuplicatedSlug) {
+			if errors.Is(err, core.ErrDuplicatedSlug) {
 				slug = slug + "-" + stringutils.RandString(5)
 				continue
 			}

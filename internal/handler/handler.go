@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mdobak/go-xerrors"
-	myblogError "github.com/siahsang/blog/internal/errors"
+	myblogError "github.com/siahsang/blog/internal/utils/httperror"
 	"github.com/siahsang/blog/internal/validator"
 )
 
@@ -30,10 +30,10 @@ func (h *Handler) HandleResponse(ctx *gin.Context, data any, err error) {
 		return
 	}
 
-	var appError *myblogError.AppError
+	var appError *myblogError.Error
 	if !errors.As(err, &appError) {
 		h.logger.Error("http_handle HandleResponse fail", "error", err)
-		h.errorResponse(ctx, nil, &myblogError.AppError{
+		h.errorResponse(ctx, nil, &myblogError.Error{
 			Code:         http.StatusInternalServerError,
 			ErrorMessage: "Internal server error",
 			ErrorStack:   err,
@@ -48,7 +48,7 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 	// Malformed JSON or incompatible JSON types.
 	if err := ctx.ShouldBind(data); err != nil {
 		h.logger.Error("http_handle BindAndCheck fail", "error", err)
-		appError := &myblogError.AppError{
+		appError := &myblogError.Error{
 			Code:         http.StatusBadRequest,
 			ErrorMessage: "Invalid request payload",
 			ErrorStack:   err,
@@ -60,7 +60,7 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 	// Struct validation: required, notblank, email, etc.
 	errFields, err := h.validator.Check(data)
 	if err != nil {
-		appError := &myblogError.AppError{
+		appError := &myblogError.Error{
 			Code:         http.StatusUnprocessableEntity,
 			ErrorMessage: "Invalid request payload",
 			ErrorStack:   err,
@@ -73,7 +73,7 @@ func (h *Handler) BindAndCheck(ctx *gin.Context, data any) bool {
 	return false
 }
 
-func (h *Handler) errorResponse(ctx *gin.Context, headers http.Header, appError *myblogError.AppError) {
+func (h *Handler) errorResponse(ctx *gin.Context, headers http.Header, appError *myblogError.Error) {
 	response := map[string]any{}
 
 	if appError.ErrorDetails != nil {

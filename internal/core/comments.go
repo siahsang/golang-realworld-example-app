@@ -16,9 +16,9 @@ func (c *Core) CreateComment(context context.Context, comment *models.Comment) (
 		RETURNING id,body,created_at,updated_at,author_id,article_id
 	`
 
-	newComment, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, insertSQL, func(rows *sql.Rows) (*models.Comment, error) {
+	newComment, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, insertSQL, func(row *sql.Row) (*models.Comment, error) {
 		var comment models.Comment
-		if err := rows.Scan(&comment.ID, &comment.Body, &comment.CreatedAt, &comment.UpdatedAt, &comment.AuthorID, &comment.ArticleID); err != nil {
+		if err := row.Scan(&comment.ID, &comment.Body, &comment.CreatedAt, &comment.UpdatedAt, &comment.AuthorID, &comment.ArticleID); err != nil {
 			return nil, xerrors.New(err)
 		}
 		return &comment, nil

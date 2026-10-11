@@ -41,9 +41,9 @@ func (c *Core) GetProfileByUserName(ctx context.Context, username string, curren
 	if currentUserID == nil {
 		profile.Following = false
 	} else {
-		isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, queryFollowing, func(rows *sql.Rows) (bool, error) {
+		isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, queryFollowing, func(row *sql.Row) (bool, error) {
 			var isFollowing bool
-			if err := rows.Scan(&isFollowing); err != nil {
+			if err := row.Scan(&isFollowing); err != nil {
 				return false, xerrors.New(err)
 			}
 			return isFollowing, nil
@@ -117,9 +117,9 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 		RETURNING user_id, follower_id
 	`
 
-	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, insertSql, func(rows *sql.Rows) (bool, error) {
+	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, insertSql, func(row *sql.Row) (bool, error) {
 		var followerID, followeeID int64
-		if err := rows.Scan(&followerID, &followeeID); err != nil {
+		if err := row.Scan(&followerID, &followeeID); err != nil {
 			return false, xerrors.New(err)
 		}
 		return true, nil
