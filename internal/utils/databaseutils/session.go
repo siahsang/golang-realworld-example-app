@@ -55,7 +55,7 @@ func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (*SQLSess
 
 // DoTransactionally executes fn within a new transaction. It commits when fn
 // succeeds and rolls back when fn returns an error or panics.
-func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(txCtx context.Context) (T, error)) (result T, err error) {
+func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(s *SQLSession) (T, error)) (result T, err error) {
 	session, err := s.BeginTx(ctx, nil)
 	if err != nil {
 		return result, err
@@ -83,7 +83,7 @@ func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(txCtx
 		}
 	}()
 
-	result, err = fn(session.Context())
+	result, err = fn(session)
 	return
 }
 

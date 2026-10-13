@@ -21,8 +21,8 @@ func NewDBStore(db *sql.DB, timeout time.Duration) *DBStore {
 	}
 }
 
-func ExecuteQuery[T any](dbStore *DBStore, ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
-	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, ctx)
+func ExecuteQuery[T any](dbStore *DBStore, sqlSession *SQLSession, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
+	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, sqlSession.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func ExecuteQuery[T any](dbStore *DBStore, ctx context.Context, sql string, extr
 	return results, nil
 }
 
-func ExecuteSingleQuery[T any](dbStore *DBStore, ctx context.Context, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
-	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, ctx)
+func ExecuteSingleQuery[T any](dbStore *DBStore, sqlSession *SQLSession, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
+	ctx, cancel, err := contextTimeoutAware(dbStore.Timeout, sqlSession.ctx)
 	if err != nil {
 		var zeroT T
 		return zeroT, err

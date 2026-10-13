@@ -21,7 +21,7 @@ var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
 var ErrDuplicatedArticleTag = xerrors.Message("Duplicate article tag")
 
 func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
-	return c.session.DoTransactionally(ctx, func(txCtx context.Context) (*models.Article, error) {
+	return c.session.DoTransactionally(ctx, func(sqlSession *databaseutils.SQLSession) (*models.Article, error) {
 
 		insertSQL := `
 		INSERT INTO articles (slug,title,description,body,created_at,updated_at,author_id)
@@ -29,7 +29,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 
-		newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, txCtx, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
+		newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, sqlSession, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
 			var article models.Article
 			if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 				&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -49,7 +49,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 
 		var savedTagList []*models.Tag
 		if len(tagModels) > 0 {
-			savedTagList, err = c.CreateTag(txCtx, tagModels)
+			savedTagList, err = c.CreateTag(sqlSession.Context(), tagModels)
 			if err != nil {
 				return nil, xerrors.New(err)
 			}
@@ -66,7 +66,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 				ArticleID int64
 				TagID     int64
 			}
-			_, err := databaseutils.ExecuteQuery(c.sqlTemplate, txCtx, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
+			_, err := databaseutils.ExecuteQuery(c.sqlTemplate, sqlSession, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
 				qr := &QueryResult{}
 				if err := rows.Scan(&qr.ArticleID, &qr.TagID); err != nil {
 					return nil, xerrors.New(err)
