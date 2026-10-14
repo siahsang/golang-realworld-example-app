@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+// transactionKey scopes transactions to their database pool.
+type transactionKey struct {
+	db *sql.DB
+}
+
 var ErrNoRowsFound = errors.New("no rows found")
 
 // SQLExecutor defines the common methods implemented by both *sql.DB and *sql.Tx.
@@ -19,9 +24,7 @@ type SQLExecutor interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// SQLSession manages transactions for a database pool.
-// It can either wrap a *sql.DB (for non-transactional operations or to begin new txs)
-// or a *sql.Tx (when an active transaction is in progress).
+// SQLSession manages queries and transactions for a database pool.
 type SQLSession struct {
 	db      *sql.DB // The original database pool
 	timeout time.Duration
@@ -35,21 +38,28 @@ func NewSession(db *sql.DB, timeout time.Duration) *SQLSession {
 	}
 }
 
-// BeginTx starts a new transaction from the DB pool.
-// It returns a new SQLSession wrapping this transaction.
-func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	tx, err := s.db.BeginTx(ctx, opts) // Begin a transaction from the pool
-	if err != nil {
-		return nil, fmt.Errorf("session: failed to begin transaction: %w", err)
+// BeginTx returns a derived context containing the transaction and its handle.
+// The caller owns committing or rolling back the transaction. Nested transactions
+// for the same database pool are not supported.
+func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (context.Context, *sql.Tx, error) {
+	key := transactionKey{db: s.db}
+	if _, ok := ctx.Value(key).(*sql.Tx); ok {
+		return ctx, nil, fmt.Errorf("session: nested transactions are not supported")
 	}
 
-	return tx, nil
+	tx, err := s.db.BeginTx(ctx, opts)
+	if err != nil {
+		return ctx, nil, fmt.Errorf("session: failed to begin transaction: %w", err)
+	}
+
+	return context.WithValue(ctx, key, tx), tx, nil
 }
 
 // DoTransactionally executes fn within a new transaction. It commits when fn
-// succeeds and rolls back when fn returns an error or panics.
-func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(tx *sql.Tx) (T, error)) (result T, err error) {
-	tx, err := s.BeginTx(ctx, nil)
+// succeeds and rolls back when fn returns an error or panics. All operations in
+// fn must use its supplied context, which must not be used after fn returns.
+func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(txCtx context.Context) (T, error)) (result T, err error) {
+	txCtx, tx, err := s.BeginTx(ctx, nil)
 	if err != nil {
 		return result, err
 	}
@@ -63,7 +73,7 @@ func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(tx *s
 		if err != nil {
 			var zero T
 			result = zero
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
 				err = errors.Join(err, fmt.Errorf("session: failed to rollback transaction: %w", rollbackErr))
 			}
 			return
@@ -76,29 +86,26 @@ func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(tx *s
 		}
 	}()
 
-	result, err = fn(tx)
+	result, err = fn(txCtx)
 	return
 }
 
-func (s *SQLSession) GetSQLExecutor(tx *sql.Tx) SQLExecutor {
-	if tx == nil {
-		// If no transaction in context, use the fallback *sql.DB.
-		// Operations on *sql.DB auto-commit single statements.
-		return s.db
+// GetSQLExecutor uses this pool's transaction from ctx, or the pool itself.
+func (s *SQLSession) GetSQLExecutor(ctx context.Context) SQLExecutor {
+	if tx, ok := ctx.Value(transactionKey{db: s.db}).(*sql.Tx); ok {
+		return tx
 	}
-
-	// If a transaction (*sql.Tx) is found in the context, return it.
-	return tx
+	return s.db
 }
 
-func (s *SQLSession) ExecuteQuery[T any](ctx context.Context, tx *sql.Tx, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
+func (s *SQLSession) ExecuteQuery[T any](ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
 	ctx, cancel, err := contextTimeoutAware(s.timeout, ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer cancel()
 
-	executor := s.GetSQLExecutor(tx)
+	executor := s.GetSQLExecutor(ctx)
 	rows, err := executor.QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -120,7 +127,7 @@ func (s *SQLSession) ExecuteQuery[T any](ctx context.Context, tx *sql.Tx, sql st
 	return results, nil
 }
 
-func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, tx *sql.Tx, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
+func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
 	ctx, cancel, err := contextTimeoutAware(s.timeout, ctx)
 	if err != nil {
 		var zeroT T
@@ -128,7 +135,7 @@ func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, tx *sql.Tx, 
 	}
 	defer cancel()
 
-	executor := s.GetSQLExecutor(tx)
+	executor := s.GetSQLExecutor(ctx)
 	row := executor.QueryRowContext(ctx, query, args...)
 
 	result, err := extractor(row)
@@ -139,7 +146,7 @@ func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, tx *sql.Tx, 
 	return result, err
 }
 
-func (s *SQLSession) ExecuteNonQuery(ctx context.Context, tx *sql.Tx, sql string, args ...any) (int64, error) {
+func (s *SQLSession) ExecuteNonQuery(ctx context.Context, sql string, args ...any) (int64, error) {
 	var cancel context.CancelFunc
 	ctx, cancel, err := contextTimeoutAware(s.timeout, ctx)
 	if err != nil {
@@ -147,7 +154,7 @@ func (s *SQLSession) ExecuteNonQuery(ctx context.Context, tx *sql.Tx, sql string
 	}
 	defer cancel()
 
-	executor := s.GetSQLExecutor(tx)
+	executor := s.GetSQLExecutor(ctx)
 	result, err := executor.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return -1, err

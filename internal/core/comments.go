@@ -15,7 +15,7 @@ func (c *Core) CreateComment(context context.Context, comment *models.Comment) (
 		RETURNING id,body,created_at,updated_at,author_id,article_id
 	`
 
-	newComment, err := c.session.ExecuteSingleQuery(context, nil, insertSQL, func(row *sql.Row) (*models.Comment, error) {
+	newComment, err := c.session.ExecuteSingleQuery(context, insertSQL, func(row *sql.Row) (*models.Comment, error) {
 		var comment models.Comment
 		if err := row.Scan(&comment.ID, &comment.Body, &comment.CreatedAt, &comment.UpdatedAt, &comment.AuthorID, &comment.ArticleID); err != nil {
 			return nil, xerrors.New(err)
@@ -42,7 +42,7 @@ func (c *Core) GetCommentsBySlug(context context.Context, slug string) ([]*model
 		WHERE article_id = $1
 		ORDER BY created_at DESC
 	`
-	comments, err := c.session.ExecuteQuery(context, nil, query, func(rows *sql.Rows) (*models.Comment, error) {
+	comments, err := c.session.ExecuteQuery(context, query, func(rows *sql.Rows) (*models.Comment, error) {
 		var comment models.Comment
 		if err := rows.Scan(&comment.ID, &comment.Body, &comment.CreatedAt, &comment.UpdatedAt, &comment.AuthorID, &comment.ArticleID); err != nil {
 			return nil, xerrors.New(err)
@@ -62,7 +62,7 @@ func (c *Core) DeleteCommentById(ctx context.Context, commentId int64) (int64, e
 		DELETE FROM comments
 		WHERE id =$1
 	`
-	rowAffected, err := c.session.ExecuteNonQuery(ctx, nil, deleteSQL, commentId)
+	rowAffected, err := c.session.ExecuteNonQuery(ctx, deleteSQL, commentId)
 	if err != nil {
 		return -1, xerrors.New(err)
 	}

@@ -26,7 +26,7 @@ func (c *Core) CreateNewUser(context context.Context, user *auth.User) error {
 		RETURNING id
 `
 	args := []any{user.Username, user.Email, user.Password}
-	_, err := c.session.ExecuteSingleQuery(context, nil, query, func(row *sql.Row) (*auth.User, error) {
+	_, err := c.session.ExecuteSingleQuery(context, query, func(row *sql.Row) (*auth.User, error) {
 		if err := row.Scan(&user.ID); err != nil {
 			return nil, xerrors.New(err)
 		}
@@ -54,7 +54,7 @@ func (c *Core) GetUserByEmail(context context.Context, email string) (*auth.User
 		WHERE email = $1
 	`
 
-	user, err := c.session.ExecuteSingleQuery(context, nil, query, func(row *sql.Row) (*auth.User, error) {
+	user, err := c.session.ExecuteSingleQuery(context, query, func(row *sql.Row) (*auth.User, error) {
 		var user = &auth.User{}
 
 		if err := row.Scan(
@@ -89,7 +89,7 @@ func (c *Core) GetUserByUsername(context context.Context, username string) (*aut
 		WHERE username = $1
 	`
 
-	user, err := c.session.ExecuteSingleQuery(context, nil, query, func(row *sql.Row) (*auth.User, error) {
+	user, err := c.session.ExecuteSingleQuery(context, query, func(row *sql.Row) (*auth.User, error) {
 		var user = &auth.User{}
 
 		if err := row.Scan(
@@ -129,7 +129,7 @@ func (c *Core) GetUsersByIdList(context context.Context, userIdList []int64) ([]
 		WHERE id in (%s)
 	`, strings.Join(placeholders, ", "))
 
-	queryResultList, err := c.session.ExecuteQuery(context, nil, query, func(rows *sql.Rows) (*auth.User, error) {
+	queryResultList, err := c.session.ExecuteQuery(context, query, func(rows *sql.Rows) (*auth.User, error) {
 		var user = &auth.User{}
 
 		if err := rows.Scan(&user.ID,
@@ -171,7 +171,7 @@ func (c *Core) UpdateUser(context context.Context, user *auth.User) (*auth.User,
 	`
 
 	args := []any{user.Bio, user.Image, user.ID}
-	returningUser, err := c.session.ExecuteSingleQuery(context, nil, query, func(row *sql.Row) (*auth.User, error) {
+	returningUser, err := c.session.ExecuteSingleQuery(context, query, func(row *sql.Row) (*auth.User, error) {
 		var user = &auth.User{}
 
 		if err := row.Scan(&user.ID,
