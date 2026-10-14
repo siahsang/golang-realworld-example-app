@@ -50,11 +50,10 @@ func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (*SQLSess
 
 	// Return a new session instance that holds this transaction and a context
 	// containing the transaction.
-	txCtx := context.WithValue(ctx, txKey{}, tx)
 	return &SQLSession{
 		db:  s.db,
 		tx:  tx,
-		ctx: txCtx,
+		ctx: nil,
 	}, nil
 }
 
@@ -112,34 +111,25 @@ func (s *SQLSession) Context() context.Context {
 	return s.ctx
 }
 
-func (s *SQLSession) GetSQLExecutor(ctx context.Context) SQLExecutor {
-	// Check if a transaction is stored in the context by WithTransaction or Begin
-	dbExecutor := ctx.Value(txKey{})
-
-	if dbExecutor == nil {
+func (s *SQLSession) GetSQLExecutor(tx *sql.Tx) SQLExecutor {
+	if tx == nil {
 		// If no transaction in context, use the fallback *sql.DB.
 		// Operations on *sql.DB auto-commit single statements.
 		return s.db
 	}
 
 	// If a transaction (*sql.Tx) is found in the context, return it.
-	tx, ok := dbExecutor.(*sql.Tx)
-	if !ok {
-		// This indicates a type mismatch if something other than *sql.Tx
-		// was stored with txKey. Panic as it's a critical error.
-		panic(fmt.Sprintf("session: value in context for txKey is not a *sql.Tx, but %T", dbExecutor))
-	}
 	return tx
 }
 
-func (s *SQLSession) ExecuteQuery[T any](ctx context.Context, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
+func (s *SQLSession) ExecuteQuery[T any](ctx context.Context, tx *sql.Tx, sql string, extractor func(rows *sql.Rows) (T, error), args ...any) ([]T, error) {
 	ctx, cancel, err := contextTimeoutAware(s.timeout, ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer cancel()
 
-	executor := s.GetSQLExecutor(ctx)
+	executor := s.GetSQLExecutor(tx)
 	rows, err := executor.QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -161,7 +151,7 @@ func (s *SQLSession) ExecuteQuery[T any](ctx context.Context, sql string, extrac
 	return results, nil
 }
 
-func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
+func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, tx *sql.Tx, query string, extractor func(row *sql.Row) (T, error), args ...any) (T, error) {
 	ctx, cancel, err := contextTimeoutAware(s.timeout, ctx)
 	if err != nil {
 		var zeroT T
@@ -169,7 +159,7 @@ func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, query string
 	}
 	defer cancel()
 
-	executor := s.GetSQLExecutor(ctx)
+	executor := s.GetSQLExecutor(tx)
 	row := executor.QueryRowContext(ctx, query, args...)
 
 	result, err := extractor(row)
@@ -180,7 +170,7 @@ func (s *SQLSession) ExecuteSingleQuery[T any](ctx context.Context, query string
 	return result, err
 }
 
-func (s *SQLSession) ExecuteNonQuery(ctx context.Context, sql string, args ...any) (int64, error) {
+func (s *SQLSession) ExecuteNonQuery(ctx context.Context, tx *sql.Tx, sql string, args ...any) (int64, error) {
 	var cancel context.CancelFunc
 	ctx, cancel, err := contextTimeoutAware(s.timeout, ctx)
 	if err != nil {
@@ -188,7 +178,7 @@ func (s *SQLSession) ExecuteNonQuery(ctx context.Context, sql string, args ...an
 	}
 	defer cancel()
 
-	executor := s.GetSQLExecutor(ctx)
+	executor := s.GetSQLExecutor(tx)
 	result, err := executor.ExecContext(ctx, sql, args...)
 	if err != nil {
 		return -1, err

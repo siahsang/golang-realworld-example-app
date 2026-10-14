@@ -299,7 +299,7 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 		countSQL += " WHERE " + strings.Join(whereClause, " AND ")
 	}
 
-	totalCount, err := c.session.ExecuteSingleQuery(context, countSQL, func(row *sql.Row) (int64, error) {
+	totalCount, err := c.session.ExecuteSingleQuery(context, nil, countSQL, func(row *sql.Row) (int64, error) {
 		var totalCount int64
 		if err := row.Scan(&totalCount); err != nil {
 			return -1, xerrors.New(err)
@@ -426,7 +426,7 @@ func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.A
 		WHERE a.slug = $1
 	`
 
-	result, err := c.session.ExecuteSingleQuery(context, selectSQL, func(row *sql.Row) (*models.Article, error) {
+	result, err := c.session.ExecuteSingleQuery(context, nil, selectSQL, func(row *sql.Row) (*models.Article, error) {
 		var article = &models.Article{}
 		if err := row.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -455,7 +455,7 @@ func (c *Core) FavoriteArticle(context context.Context, slug string, user *auth.
 		RETURNING user_id,article_id
 	`
 
-	_, err = c.session.ExecuteNonQuery(context, updateSQL, user.ID, article.ID)
+	_, err = c.session.ExecuteNonQuery(context, nil, updateSQL, user.ID, article.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)
