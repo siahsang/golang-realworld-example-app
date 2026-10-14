@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-type txKey struct {
-}
-
 var ErrNoRowsFound = errors.New("no rows found")
 
 // SQLExecutor defines the common methods implemented by both *sql.DB and *sql.Tx.
@@ -26,9 +23,7 @@ type SQLExecutor interface {
 // It can either wrap a *sql.DB (for non-transactional operations or to begin new txs)
 // or a *sql.Tx (when an active transaction is in progress).
 type SQLSession struct {
-	db      *sql.DB         // The original database pool
-	tx      *sql.Tx         // The active transaction, if any
-	ctx     context.Context // Context associated with this session instance
+	db      *sql.DB // The original database pool
 	timeout time.Duration
 }
 
@@ -42,73 +37,47 @@ func NewSession(db *sql.DB, timeout time.Duration) *SQLSession {
 
 // BeginTx starts a new transaction from the DB pool.
 // It returns a new SQLSession wrapping this transaction.
-func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (*SQLSession, error) {
+func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
 	tx, err := s.db.BeginTx(ctx, opts) // Begin a transaction from the pool
 	if err != nil {
 		return nil, fmt.Errorf("session: failed to begin transaction: %w", err)
 	}
 
-	// Return a new session instance that holds this transaction and a context
-	// containing the transaction.
-	return &SQLSession{
-		db:  s.db,
-		tx:  tx,
-		ctx: nil,
-	}, nil
+	return tx, nil
 }
 
 // DoTransactionally executes fn within a new transaction. It commits when fn
 // succeeds and rolls back when fn returns an error or panics.
 func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(tx *sql.Tx) (T, error)) (result T, err error) {
-	session, err := s.BeginTx(ctx, nil)
+	tx, err := s.BeginTx(ctx, nil)
 	if err != nil {
 		return result, err
 	}
 
 	defer func() {
 		if p := recover(); p != nil {
-			_ = session.Rollback()
+			_ = tx.Rollback()
 			panic(p)
 		}
 
 		if err != nil {
 			var zero T
 			result = zero
-			if rollbackErr := session.Rollback(); rollbackErr != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				err = errors.Join(err, fmt.Errorf("session: failed to rollback transaction: %w", rollbackErr))
 			}
 			return
 		}
 
-		if commitErr := session.Commit(); commitErr != nil {
+		if commitErr := tx.Commit(); commitErr != nil {
 			var zero T
 			result = zero
 			err = fmt.Errorf("session: failed to commit transaction: %w", commitErr)
 		}
 	}()
 
-	result, err = fn(session.tx)
+	result, err = fn(tx)
 	return
-}
-
-func (s *SQLSession) Rollback() error {
-	if s.tx == nil {
-		return fmt.Errorf("session: no active transaction to rollback")
-	}
-	return s.tx.Rollback()
-}
-
-// Commit commits the transaction held by this session.
-func (s *SQLSession) Commit() error {
-	if s.tx == nil {
-		return fmt.Errorf("session: no active transaction to commit")
-	}
-	return s.tx.Commit()
-}
-
-// Context returns the context associated with this session instance.
-func (s *SQLSession) Context() context.Context {
-	return s.ctx
 }
 
 func (s *SQLSession) GetSQLExecutor(tx *sql.Tx) SQLExecutor {
