@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/utils/collectionutils"
-	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/models"
-	"strings"
 )
 
 func (c *Core) CreateTag(context context.Context, tags []*models.Tag) ([]*models.Tag, error) {
@@ -39,7 +39,7 @@ func (c *Core) CreateTag(context context.Context, tags []*models.Tag) ([]*models
 		  	RETURNING id, name
 `, valueCluses)
 
-	tagList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, insertSQL, func(rows *sql.Rows) (*models.Tag, error) {
+	tagList, err := c.session.ExecuteQuery(context, insertSQL, func(rows *sql.Rows) (*models.Tag, error) {
 		tag := &models.Tag{}
 		if err := rows.Scan(&tag.ID, &tag.Name); err != nil {
 			return nil, xerrors.Newf("failed to scan returned tag: %w", err)
@@ -99,7 +99,7 @@ func (c *Core) GetTagsByArticleId(context context.Context, articleIdList []int64
 		TagName   string
 	}
 
-	foundArticleList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (QueryTempResult, error) {
+	foundArticleList, err := c.session.ExecuteQuery(context, query, func(rows *sql.Rows) (QueryTempResult, error) {
 		queryTempResult := QueryTempResult{}
 		if err := rows.Scan(&queryTempResult.ArticleID, &queryTempResult.TagID, &queryTempResult.TagName); err != nil {
 			return QueryTempResult{}, xerrors.Newf("failed to scan row: %w", err)
@@ -136,7 +136,7 @@ func (c *Core) GetTagsList(context context.Context) ([]*models.Tag, error) {
 		FROM tags
 	`
 
-	foundTagList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, query, func(rows *sql.Rows) (*models.Tag, error) {
+	foundTagList, err := c.session.ExecuteQuery(context, query, func(rows *sql.Rows) (*models.Tag, error) {
 		queryTempResult := &models.Tag{}
 		if err := rows.Scan(&queryTempResult.ID, &queryTempResult.Name); err != nil {
 			return nil, xerrors.Newf("failed to scan row: %w", err)

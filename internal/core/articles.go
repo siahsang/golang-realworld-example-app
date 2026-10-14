@@ -11,7 +11,6 @@ import (
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/filter"
-	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/internal/utils/functional"
 	"github.com/siahsang/blog/internal/utils/stringutils"
 	"github.com/siahsang/blog/models"
@@ -21,7 +20,7 @@ var ErrDuplicatedSlug = xerrors.Message("Duplicate slug")
 var ErrDuplicatedArticleTag = xerrors.Message("Duplicate article tag")
 
 func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagModels []*models.Tag) (*models.Article, error) {
-	return c.session.DoTransactionally(ctx, func(sqlSession *databaseutils.SQLSession) (*models.Article, error) {
+	return c.session.DoTransactionally(ctx, func(tx *sql.Tx) (*models.Article, error) {
 
 		insertSQL := `
 		INSERT INTO articles (slug,title,description,body,created_at,updated_at,author_id)
@@ -29,7 +28,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 
-		newArticle, err := databaseutils.ExecuteQuery(c.sqlTemplate, sqlSession, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
+		newArticle, err := c.session.ExecuteQuery(ctx, insertSQL, func(rows *sql.Rows) (*models.Article, error) {
 			var article models.Article
 			if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 				&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -49,7 +48,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 
 		var savedTagList []*models.Tag
 		if len(tagModels) > 0 {
-			savedTagList, err = c.CreateTag(sqlSession.Context(), tagModels)
+			savedTagList, err = c.CreateTag(ctx, tagModels)
 			if err != nil {
 				return nil, xerrors.New(err)
 			}
@@ -66,7 +65,7 @@ func (c *Core) CreateArticle(ctx context.Context, article *models.Article, tagMo
 				ArticleID int64
 				TagID     int64
 			}
-			_, err := databaseutils.ExecuteQuery(c.sqlTemplate, sqlSession, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
+			_, err := c.session.ExecuteQuery(ctx, insertSQL, func(rows *sql.Rows) (*QueryResult, error) {
 				qr := &QueryResult{}
 				if err := rows.Scan(&qr.ArticleID, &qr.TagID); err != nil {
 					return nil, xerrors.New(err)
@@ -100,7 +99,7 @@ func (c *Core) IsFavouriteArticleByUser(ctx context.Context, articleID int64, us
 		)
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, selectSQL, func(row *sql.Row) (bool, error) {
+	result, err := c.session.ExecuteSingleQuery(ctx, selectSQL, func(row *sql.Row) (bool, error) {
 		var isFavourite bool
 		if err := row.Scan(&isFavourite); err != nil {
 			return false, xerrors.New(err)
@@ -139,7 +138,7 @@ func (c *Core) FavouriteArticleByUser(context context.Context, articleIdList []i
 		SELECT article_id FROM favourite_articles WHERE user_id = $1 and article_id in (%s)
 	`, strings.Join(placeholders, ","))
 
-	queryResult, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (int64, error) {
+	queryResult, err := c.session.ExecuteQuery(context, selectSQL, func(rows *sql.Rows) (int64, error) {
 		var articleId int64
 		if err := rows.Scan(&articleId); err != nil {
 			return 0, xerrors.New(err)
@@ -181,7 +180,7 @@ func (c *Core) FavouriteCountByArticleId(context context.Context, articleIdList 
 		Count     int64
 	}
 
-	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*QueryResult, error) {
+	queryResultList, err := c.session.ExecuteQuery(context, selectSQL, func(rows *sql.Rows) (*QueryResult, error) {
 		queryResult := &QueryResult{}
 
 		if err := rows.Scan(&queryResult.Count, &queryResult.ArticleId); err != nil {
@@ -206,7 +205,7 @@ func (c *Core) FavouriteArticleCount(context context.Context, articleId int64) (
 		SELECT COUNT(*) FROM favourite_articles WHERE article_id = $1
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(row *sql.Row) (int64, error) {
+	result, err := c.session.ExecuteSingleQuery(context, selectSQL, func(row *sql.Row) (int64, error) {
 		var favouriteArticleCount int64
 		if err := row.Scan(&favouriteArticleCount); err != nil {
 			return 0, xerrors.New(err)
@@ -300,7 +299,7 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 		countSQL += " WHERE " + strings.Join(whereClause, " AND ")
 	}
 
-	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, countSQL, func(row *sql.Row) (int64, error) {
+	totalCount, err := c.session.ExecuteSingleQuery(context, countSQL, func(row *sql.Row) (int64, error) {
 		var totalCount int64
 		if err := row.Scan(&totalCount); err != nil {
 			return -1, xerrors.New(err)
@@ -316,7 +315,7 @@ func (c *Core) GetArticles(context context.Context, filter filter.Filter, tag, a
 	selectSQL += " ORDER BY a.created_at DESC LIMIT $" + fmt.Sprintf("%d", argId) + " OFFSET $" + fmt.Sprintf("%d", argId+1)
 	args = append(args, filter.Limit, filter.Offset)
 
-	result, err := databaseutils.ExecuteQuery(c.sqlTemplate, context, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
+	result, err := c.session.ExecuteQuery(context, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
 		var article = &models.Article{}
 		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -363,7 +362,7 @@ func (c *Core) FeedArticle(ctx context.Context, username string, limit, offset i
 	WHERE a.author_id IN (%s)
 `, inClause)
 
-	totalCount, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, countSQL, func(row *sql.Row) (int64, error) {
+	totalCount, err := c.session.ExecuteSingleQuery(ctx, countSQL, func(row *sql.Row) (int64, error) {
 		var totalCount int64
 		if err := row.Scan(&totalCount); err != nil {
 			return -1, xerrors.New(err)
@@ -379,7 +378,7 @@ func (c *Core) FeedArticle(ctx context.Context, username string, limit, offset i
 	selectSQL += fmt.Sprintf(" ORDER BY a.created_at DESC, a.id DESC LIMIT $%d OFFSET $%d", nextArg, nextArg+1)
 	args = append(args, limit, offset)
 
-	result, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
+	result, err := c.session.ExecuteQuery(ctx, selectSQL, func(rows *sql.Rows) (*models.Article, error) {
 		var article = &models.Article{}
 		if err := rows.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -404,7 +403,7 @@ func (c *Core) UpdateArticle(context context.Context, article *models.Article) (
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
 	args := []any{article.Title, article.Description, article.Body, time.Now(), article.ID}
-	returningArticle, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, query, func(row *sql.Row) (*models.Article, error) {
+	returningArticle, err := c.session.ExecuteSingleQuery(context, query, func(row *sql.Row) (*models.Article, error) {
 		var article = &models.Article{}
 		if err := row.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -427,7 +426,7 @@ func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.A
 		WHERE a.slug = $1
 	`
 
-	result, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, context, selectSQL, func(row *sql.Row) (*models.Article, error) {
+	result, err := c.session.ExecuteSingleQuery(context, selectSQL, func(row *sql.Row) (*models.Article, error) {
 		var article = &models.Article{}
 		if err := row.Scan(&article.ID, &article.Slug, &article.Title,
 			&article.Description, &article.Body, &article.CreatedAt, &article.UpdatedAt, &article.AuthorID); err != nil {
@@ -456,7 +455,7 @@ func (c *Core) FavoriteArticle(context context.Context, slug string, user *auth.
 		RETURNING user_id,article_id
 	`
 
-	_, err = databaseutils.ExecuteNonQuery(c.sqlTemplate, context, updateSQL, user.ID, article.ID)
+	_, err = c.session.ExecuteNonQuery(context, updateSQL, user.ID, article.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)
@@ -477,7 +476,7 @@ func (c *Core) UnFavoriteArticle(context context.Context, slug string, user *aut
 		RETURNING user_id, article_id
 	`
 
-	_, err = databaseutils.ExecuteNonQuery(c.sqlTemplate, context, deleteSQL, user.ID, article.ID)
+	_, err = c.session.ExecuteNonQuery(context, deleteSQL, user.ID, article.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)

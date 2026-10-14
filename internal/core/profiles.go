@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
-	"github.com/siahsang/blog/internal/utils/databaseutils"
 	"github.com/siahsang/blog/models"
 	"strings"
 )
@@ -41,7 +40,7 @@ func (c *Core) GetProfileByUserName(ctx context.Context, username string, curren
 	if currentUserID == nil {
 		profile.Following = false
 	} else {
-		isFollowing, err := databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, queryFollowing, func(row *sql.Row) (bool, error) {
+		isFollowing, err := c.session.ExecuteSingleQuery(ctx, queryFollowing, func(row *sql.Row) (bool, error) {
 			var isFollowing bool
 			if err := row.Scan(&isFollowing); err != nil {
 				return false, xerrors.New(err)
@@ -79,7 +78,7 @@ func (c *Core) GetFollowingUserList(ctx context.Context, username string) ([]*au
 			FROM users as u join followers f on u.id = f.user_id  
 			WHERE follower_id = $1
 	`
-	queryResultList, err := databaseutils.ExecuteQuery(c.sqlTemplate, ctx, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
+	queryResultList, err := c.session.ExecuteQuery(ctx, queryFollowing, func(rows *sql.Rows) (*auth.User, error) {
 		var tempUser = &auth.User{}
 
 		if err := rows.Scan(&tempUser.ID,
@@ -117,7 +116,7 @@ func (c *Core) FollowUser(ctx context.Context, followerUser auth.User, followeeU
 		RETURNING user_id, follower_id
 	`
 
-	_, err = databaseutils.ExecuteSingleQuery(c.sqlTemplate, ctx, insertSql, func(row *sql.Row) (bool, error) {
+	_, err = c.session.ExecuteSingleQuery(ctx, insertSql, func(row *sql.Row) (bool, error) {
 		var followerID, followeeID int64
 		if err := row.Scan(&followerID, &followeeID); err != nil {
 			return false, xerrors.New(err)
@@ -153,7 +152,7 @@ func (c *Core) UnfollowUser(ctx context.Context, followerUser auth.User, followe
 		WHERE user_id = $1 AND follower_id = $2
 	`
 
-	rowsAffected, err := databaseutils.ExecuteNonQuery(c.sqlTemplate, ctx, deleteSql, followeeUser.ID, followerUser.ID)
+	rowsAffected, err := c.session.ExecuteNonQuery(ctx, deleteSql, followeeUser.ID, followerUser.ID)
 
 	if err != nil {
 		return nil, xerrors.New(err)

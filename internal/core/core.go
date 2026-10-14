@@ -9,16 +9,14 @@ import (
 )
 
 type Core struct {
-	log         *slog.Logger
-	session     *databaseutils.SQLSession
-	sqlTemplate *databaseutils.DBStore
+	log     *slog.Logger
+	session *databaseutils.SQLSession
 }
 
-func NewCore(log *slog.Logger, session *databaseutils.SQLSession, sqlTemplate *databaseutils.DBStore) *Core {
+func NewCore(log *slog.Logger, session *databaseutils.SQLSession) *Core {
 	return &Core{
-		log:         log,
-		session:     session,
-		sqlTemplate: sqlTemplate,
+		log:     log,
+		session: session,
 	}
 }
 
