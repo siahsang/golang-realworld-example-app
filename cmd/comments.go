@@ -18,38 +18,7 @@ package main
 //}
 //
 //
-//func (app *application) getComments(w http.ResponseWriter, r *http.Request) {
-//	v := validator.New()
-//	params := httprouter.ParamsFromContext(r.Context())
-//	slug := params.ByName("slug")
-//
-//	v.CheckNotBlank(slug, "slug", "slug must be provided")
-//
-//	if !v.IsValid() {
-//		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-//		return
-//	}
-//
-//	commentsBySlug, err := app.core.GetCommentsBySlug(r.Context(), slug)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	user, _ := app.auth.GetAuthenticatedUser(r)
-//
-//	response, err := prepareMultiCommentsResponse(app, r, commentsBySlug, user)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//}
-//
+
 //func (app *application) deleteComment(w http.ResponseWriter, r *http.Request) {
 //	params := httprouter.ParamsFromContext(r.Context())
 //	slug := params.ByName("slug")

@@ -33,6 +33,7 @@ func (b *BlogAPIRouter) RegisterOptionalAuthAPIRouter(group *gin.RouterGroup) {
 
 	group.GET("/articles", b.articleController.GetArticles)
 	group.GET("/articles/:slug", b.articleController.GetArticleBySlug)
+	group.GET("/articles/:slug/comments", b.commentController.GetComments)
 }
 
 func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {
