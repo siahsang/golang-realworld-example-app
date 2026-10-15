@@ -237,6 +237,9 @@ func (c *Core) CreateSlug(title string) string {
 
 	slug = strings.Trim(slug, "-")
 
+	if slug == "" {
+		slug = "article-"
+	}
 	return slug
 }
 

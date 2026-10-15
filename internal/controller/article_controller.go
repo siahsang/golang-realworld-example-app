@@ -284,9 +284,8 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		return
 	}
 
-
 	isTitleChanged := false
-	if updateArticleRequest.Title != nil {
+	if updateArticleRequest.Title != nil && strings.TrimSpace(*updateArticleRequest.Title) != "" {
 		newTrimTitle := strings.TrimSpace(*updateArticleRequest.Title)
 		isTitleChanged = newTrimTitle != existingArticleBySlug.Title
 		existingArticleBySlug.Title = newTrimTitle
@@ -300,7 +299,6 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		trimSpace := strings.TrimSpace(*updateArticleRequest.Body)
 		existingArticleBySlug.Body = trimSpace
 	}
-
 
 	newSlug := existingArticleBySlug.Slug
 	if isTitleChanged {
