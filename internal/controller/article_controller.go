@@ -346,6 +346,24 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		return
 	}
 
+	user, err := auth.GetAuthenticatedUser(ctx)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusUnauthorized,
+			ErrorMessage: "authentication required",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	if existingArticleBySlug.AuthorID != user.ID {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusForbidden,
+			ErrorMessage: "you are not the author of this article",
+		})
+		return
+	}
+
 	err = c.core.DeleteArticle(ctx, existingArticleBySlug.Slug)
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, err)
