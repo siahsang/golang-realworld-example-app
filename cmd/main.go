@@ -2,12 +2,18 @@ package main
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/golang-cz/devslog"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/internal/controller"
@@ -57,6 +63,12 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
+	err = runMigrations(db, logger)
+	if err != nil {
+		logger.Error("Error running migrations", "error", err)
+		os.Exit(1)
+	}
 
 	app, err := newApplication(db, logger)
 	if err != nil {
@@ -124,4 +136,31 @@ func configLogger() *slog.Logger {
 
 	logger := slog.New(handler)
 	return logger
+}
+
+// runMigrations applies all database migrations to the specified database
+func runMigrations(db *sql.DB, logger *slog.Logger) error {
+	const migrationsPath = "/home/javad/Project/go-sample/golang-realworld-example-app/migrations"
+	logger.Info("Running database migrations", "path", migrationsPath)
+
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return fmt.Errorf("could not create database driver: %w", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		(&url.URL{Scheme: "file", Path: migrationsPath}).String(),
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return fmt.Errorf("could not create migrate instance: %w", err)
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("could not run migrations: %w", err)
+	}
+
+	logger.Info("Migrations completed successfully")
+	return nil
 }
