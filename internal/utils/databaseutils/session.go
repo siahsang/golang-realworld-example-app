@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// transactionKey scopes transactions to their database pool.
+// ctxKey identifies the transaction stored in a context by SQLSession.
 type ctxKey struct{}
 
 
@@ -38,8 +38,8 @@ func NewSession(db *sql.DB, timeout time.Duration) *SQLSession {
 }
 
 // BeginTx returns a derived context containing the transaction and its handle.
-// The caller owns committing or rolling back the transaction. Nested transactions
-// for the same database pool are not supported.
+// The caller owns committing or rolling back the transaction. A context that
+// already contains a SQLSession transaction cannot start another one.
 func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (context.Context, *sql.Tx, error) {
 
 	if _, ok := ctx.Value(ctxKey{}).(*sql.Tx); ok {
@@ -89,7 +89,8 @@ func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(txCtx
 	return
 }
 
-// GetSQLExecutor uses this pool's transaction from ctx, or the pool itself.
+// GetSQLExecutor uses the transaction stored in ctx, or this session's pool
+// when the context contains no transaction.
 func (s *SQLSession) GetSQLExecutor(ctx context.Context) SQLExecutor {
 	if tx, ok := ctx.Value(ctxKey{}).(*sql.Tx); ok {
 		return tx
