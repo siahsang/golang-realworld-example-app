@@ -9,9 +9,8 @@ import (
 )
 
 // transactionKey scopes transactions to their database pool.
-type transactionKey struct {
-	db *sql.DB
-}
+type ctxKey struct{}
+
 
 var ErrNoRowsFound = errors.New("no rows found")
 
@@ -42,8 +41,8 @@ func NewSession(db *sql.DB, timeout time.Duration) *SQLSession {
 // The caller owns committing or rolling back the transaction. Nested transactions
 // for the same database pool are not supported.
 func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (context.Context, *sql.Tx, error) {
-	key := transactionKey{db: s.db}
-	if _, ok := ctx.Value(key).(*sql.Tx); ok {
+
+	if _, ok := ctx.Value(ctxKey{}).(*sql.Tx); ok {
 		return ctx, nil, fmt.Errorf("session: nested transactions are not supported")
 	}
 
@@ -52,7 +51,7 @@ func (s *SQLSession) BeginTx(ctx context.Context, opts *sql.TxOptions) (context.
 		return ctx, nil, fmt.Errorf("session: failed to begin transaction: %w", err)
 	}
 
-	return context.WithValue(ctx, key, tx), tx, nil
+	return context.WithValue(ctx, ctxKey{}, tx), tx, nil
 }
 
 // DoTransactionally executes fn within a new transaction. It commits when fn
@@ -92,7 +91,7 @@ func (s *SQLSession) DoTransactionally[T any](ctx context.Context, fn func(txCtx
 
 // GetSQLExecutor uses this pool's transaction from ctx, or the pool itself.
 func (s *SQLSession) GetSQLExecutor(ctx context.Context) SQLExecutor {
-	if tx, ok := ctx.Value(transactionKey{db: s.db}).(*sql.Tx); ok {
+	if tx, ok := ctx.Value(ctxKey{}).(*sql.Tx); ok {
 		return tx
 	}
 	return s.db
