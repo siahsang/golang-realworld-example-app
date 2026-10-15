@@ -276,6 +276,15 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		return
 	}
 
+	if existingArticleBySlug.AuthorID != user.ID {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusForbidden,
+			ErrorMessage: "you are not the author of this article",
+		})
+		return
+	}
+
+
 	isTitleChanged := false
 	if updateArticleRequest.Title != nil {
 		newTrimTitle := strings.TrimSpace(*updateArticleRequest.Title)
@@ -292,13 +301,6 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		existingArticleBySlug.Body = trimSpace
 	}
 
-	if existingArticleBySlug.AuthorID != user.ID {
-		c.handler.HandleResponse(ctx, nil, &httperror.Error{
-			Code:         http.StatusForbidden,
-			ErrorMessage: "you are not the author of this article",
-		})
-		return
-	}
 
 	newSlug := existingArticleBySlug.Slug
 	if isTitleChanged {
