@@ -9,16 +9,19 @@ type BlogAPIRouter struct {
 	userController    *controller.UserController
 	profileController *controller.ProfileController
 	articleController *controller.ArticleController
+	commentController *controller.CommentController
 }
 
 func NewBlogAPIRouter(
 	userController *controller.UserController,
 	profileController *controller.ProfileController,
-	articleController *controller.ArticleController) *BlogAPIRouter {
+	articleController *controller.ArticleController,
+	commentController *controller.CommentController) *BlogAPIRouter {
 	return &BlogAPIRouter{
 		userController:    userController,
 		profileController: profileController,
 		articleController: articleController,
+		commentController: commentController,
 	}
 }
 
@@ -40,5 +43,6 @@ func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {
 	group.POST("/articles", b.articleController.CreateArticle)
 	group.PUT("/articles/:slug", b.articleController.UpdateArticle)
 	group.DELETE("/articles/:slug", b.articleController.DeleteArticle)
+	group.POST("/articles/:slug/comments", b.commentController.CreateComment)
 
 }

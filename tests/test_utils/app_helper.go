@@ -54,6 +54,7 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 
 	profiler := controller.NewProfileController(coreInstance, logger, authInstance)
 	articleController := controller.NewArticleController(coreInstance, logger, cfg)
+	commentController := controller.NewCommentController(coreInstance, logger, cfg)
 
 	authUserMiddleware := middleware.NewAuthUserMiddleware(coreInstance, cfg, logger)
 
@@ -61,7 +62,7 @@ func NewTestApplication(db *sql.DB, logger *slog.Logger) (*TestApplication, erro
 		Config:             cfg,
 		UIConfig:           uiConfig,
 		UIRouter:           uiRouter,
-		BlogAPIRouter:      router.NewBlogAPIRouter(userController, profiler, articleController),
+		BlogAPIRouter:      router.NewBlogAPIRouter(userController, profiler, articleController, commentController),
 		Auth:               auth.New(cfg),
 		Core:               coreInstance,
 		Logger:             logger,

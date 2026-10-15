@@ -17,68 +17,6 @@ package main
 //	Following bool    `json:"following"`
 //}
 //
-//func (app *application) createComment(w http.ResponseWriter, r *http.Request) {
-//	type CreateCommentPayload struct {
-//		Body string `json:"body"`
-//	}
-//
-//	type CreateCommentRequest struct {
-//		CreateCommentPayload `json:"comment"`
-//	}
-//
-//	var createCommentRequest CreateCommentRequest
-//
-//	if err := app.readJSON(w, r, &createCommentRequest); err != nil {
-//		app.badRequestResponse(w, r, &AppError{
-//			ErrorMessage: err.Error(),
-//			ErrorStack:   err,
-//		})
-//		return
-//	}
-//
-//	v := validator.New()
-//	v.CheckNotBlank(createCommentRequest.Body, "body", "must be provided")
-//
-//	if !v.IsValid() {
-//		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-//		return
-//	}
-//
-//	params := httprouter.ParamsFromContext(r.Context())
-//	slug := params.ByName("slug")
-//
-//	user, _ := app.auth.GetAuthenticatedUser(r)
-//	newComment, err := databaseutils.DoTransactionally(r.Context(), app.session, func(txCtx context.Context) (*models.Comment, error) {
-//		articleBySlug, err := app.core.GetArticleBySlug(txCtx, slug)
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		comment, err := app.core.CreateComment(txCtx, &models.Comment{
-//			Body:      createCommentRequest.Body,
-//			CreatedAt: time.Now(),
-//			UpdatedAt: time.Now(),
-//			ArticleID: articleBySlug.ID,
-//			AuthorID:  user.ID,
-//		})
-//		if err != nil {
-//			return nil, err
-//		}
-//
-//		return comment, nil
-//	})
-//
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	response, err := prepareSingleCommentsResponse(app, r, newComment, user)
-//	err = app.writeJSON(w, http.StatusCreated, response, nil)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//	}
-//}
 //
 //func (app *application) getComments(w http.ResponseWriter, r *http.Request) {
 //	v := validator.New()

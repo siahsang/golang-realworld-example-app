@@ -23,8 +23,6 @@ import (
 	"github.com/siahsang/blog/models"
 )
 
-type envelope map[string]any
-
 type ArticleListQuery struct {
 	Tag       string `form:"tag"`
 	Author    string `form:"author"`
@@ -373,15 +371,15 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, nil)
 }
 
-func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
+func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (gin.H, error) {
 	return prepareArticleResponse(ctx, articles, totalCount, core, currentLoginUser, false)
 }
 
-func prepareSingleArticleResponse(ctx *gin.Context, article *models.Article, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
+func prepareSingleArticleResponse(ctx *gin.Context, article *models.Article, core *core.Core, currentLoginUser *auth.User) (gin.H, error) {
 	return prepareArticleResponse(ctx, []*models.Article{article}, 1, core, currentLoginUser, true)
 }
 
-func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User, singleResponse bool) (envelope, error) {
+func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User, singleResponse bool) (gin.H, error) {
 	type AuthorEnvelop struct {
 		Username  string  `json:"username"`
 		Bio       *string `json:"bio"`
@@ -474,13 +472,13 @@ func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalC
 	}
 
 	if singleResponse {
-		return envelope{
+		return gin.H{
 			"article": articlesEnvelop[0],
 		}, nil
 
 	}
 
-	return envelope{
+	return gin.H{
 		"articles":      articlesEnvelop,
 		"articlesCount": totalCount,
 	}, nil
