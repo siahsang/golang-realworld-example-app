@@ -491,3 +491,16 @@ func (c *Core) UnFavoriteArticle(context context.Context, slug string, user *aut
 	c.log.Info("user unfavorited article", "id", user.ID, "article_id", article.ID)
 	return article, nil
 }
+
+func (c *Core) DeleteArticle(context context.Context, slug string) error {
+	const deleteSQL = `
+		DELETE FROM articles
+		WHERE slug = $1
+	`
+
+	_, err := c.session.ExecuteNonQuery(context, deleteSQL, slug)
+	if err != nil {
+		return xerrors.New(err)
+	}
+	return nil
+}

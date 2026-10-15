@@ -329,6 +329,32 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, response)
 }
 
+func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
+	slug := ctx.Param("slug")
+	existingArticleBySlug, err := c.core.GetArticleBySlug(ctx, slug)
+
+	if err != nil {
+		if errors.Is(err, databaseutils.ErrNoRowsFound) {
+			c.handler.HandleResponse(ctx, nil, &httperror.Error{
+				Code:         http.StatusNotFound,
+				ErrorMessage: "article not found",
+			})
+			return
+		}
+
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	err = c.core.DeleteArticle(ctx, existingArticleBySlug.Slug)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, nil)
+}
+
 func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
 	return prepareArticleResponse(ctx, articles, totalCount, core, currentLoginUser, false)
 }
