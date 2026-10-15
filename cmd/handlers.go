@@ -7,9 +7,6 @@ func (app *application) routes() http.Handler {
 	router := httprouter.New()
 
 	// Not require authentication for these routes
-	//router.HandlerFunc(http.MethodPost, "/api/users", app.createUser) // done
-	//router.HandlerFunc(http.MethodPost, "/api/users/login", app.login) // done
-	//router.GET("/api/profiles/:username", app.getProfile) // done
 	//router.HandlerFunc(http.MethodGet, "/api/articles/:slug/comments", app.getComments)
 	//router.HandlerFunc(http.MethodGet, "/api/tags", app.getTagList)
 

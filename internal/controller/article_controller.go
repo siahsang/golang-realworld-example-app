@@ -164,7 +164,7 @@ func (c *ArticleController) GetArticleBySlug(ctx *gin.Context) {
 		return
 	}
 
-	response, err := prepareSingleArticleResponse(ctx, article, 1, c.core, user)
+	response, err := prepareSingleArticleResponse(ctx, article, c.core, user)
 
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, err)
@@ -235,7 +235,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 		break
 	}
 
-	response, err := prepareSingleArticleResponse(ctx, article, 1, c.core, user)
+	response, err := prepareSingleArticleResponse(ctx, article, c.core, user)
 	if err != nil {
 		c.handler.HandleResponse(ctx, nil, err)
 		return
@@ -244,12 +244,97 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, response)
 }
 
+func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
+	var updateArticleRequest schema.ArticleUpdatePayloadReq
+	if c.handler.BindAndCheck(ctx, &updateArticleRequest) {
+		return
+	}
+
+	slug := ctx.Param("slug")
+	existingArticleBySlug, err := c.core.GetArticleBySlug(ctx, slug)
+
+	if err != nil {
+		if errors.Is(err, databaseutils.ErrNoRowsFound) {
+			c.handler.HandleResponse(ctx, nil, &httperror.Error{
+				Code:         http.StatusNotFound,
+				ErrorMessage: "article not found",
+			})
+			return
+		}
+
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	user, err := auth.GetAuthenticatedUser(ctx)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusUnauthorized,
+			ErrorMessage: "authentication required",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	isTitleChanged := false
+	if updateArticleRequest.Title != nil {
+		newTrimTitle := strings.TrimSpace(*updateArticleRequest.Title)
+		isTitleChanged = newTrimTitle != existingArticleBySlug.Title
+		existingArticleBySlug.Title = newTrimTitle
+	}
+
+	if updateArticleRequest.Description != nil {
+		trimSpace := strings.TrimSpace(*updateArticleRequest.Description)
+		existingArticleBySlug.Description = trimSpace
+	}
+	if updateArticleRequest.Body != nil {
+		trimSpace := strings.TrimSpace(*updateArticleRequest.Body)
+		existingArticleBySlug.Body = trimSpace
+	}
+
+	if existingArticleBySlug.AuthorID != user.ID {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusForbidden,
+			ErrorMessage: "you are not the author of this article",
+		})
+		return
+	}
+
+	newSlug := existingArticleBySlug.Slug
+	if isTitleChanged {
+		newSlug = c.core.CreateSlug(existingArticleBySlug.Title)
+		existingArticleBySlug.Slug = newSlug
+	}
+	var updatedArticle *models.Article
+	for {
+		updatedArticle, err = c.core.UpdateArticle(ctx, existingArticleBySlug)
+		if err != nil {
+			if errors.Is(err, core.ErrDuplicatedSlug) {
+				newSlug = newSlug + "-" + stringutils.RandString(5)
+				existingArticleBySlug.Slug = newSlug
+				continue
+			}
+			c.handler.HandleResponse(ctx, nil, err)
+			return
+		}
+		break
+	}
+
+	response, err := prepareSingleArticleResponse(ctx, updatedArticle, c.core, user)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response)
+}
+
 func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
 	return prepareArticleResponse(ctx, articles, totalCount, core, currentLoginUser, false)
 }
 
-func prepareSingleArticleResponse(ctx *gin.Context, article *models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
-	return prepareArticleResponse(ctx, []*models.Article{article}, totalCount, core, currentLoginUser, true)
+func prepareSingleArticleResponse(ctx *gin.Context, article *models.Article, core *core.Core, currentLoginUser *auth.User) (envelope, error) {
+	return prepareArticleResponse(ctx, []*models.Article{article}, 1, core, currentLoginUser, true)
 }
 
 func prepareArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User, singleResponse bool) (envelope, error) {

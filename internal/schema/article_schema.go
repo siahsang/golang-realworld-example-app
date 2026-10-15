@@ -10,3 +10,13 @@ type ArticlePayloadReq struct {
 type ArticlePayload struct {
 	ArticlePayloadReq `json:"article" validate:"required"`
 }
+
+type ArticleUpdatePayload struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Body        *string `json:"body"`
+}
+
+type ArticleUpdatePayloadReq struct {
+	ArticleUpdatePayload `json:"article" validate:"required"`
+}

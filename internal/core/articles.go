@@ -398,11 +398,11 @@ func (c *Core) FeedArticle(ctx context.Context, username string, limit, offset i
 func (c *Core) UpdateArticle(context context.Context, article *models.Article) (*models.Article, error) {
 	query := `
 		UPDATE articles
-		SET title = $1, description = $2, body = $3, updated_at = $4
-		WHERE id = $5
+		SET title = $1, description = $2, body = $3, updated_at = $4, slug = $5
+		WHERE id = $6
 		RETURNING id,slug,title,description,body,created_at,updated_at,author_id
 	`
-	args := []any{article.Title, article.Description, article.Body, time.Now(), article.ID}
+	args := []any{article.Title, article.Description, article.Body, time.Now(), article.Slug, article.ID}
 	returningArticle, err := c.session.ExecuteSingleQuery(context, query, func(row *sql.Row) (*models.Article, error) {
 		var article = &models.Article{}
 		if err := row.Scan(&article.ID, &article.Slug, &article.Title,
@@ -411,12 +411,16 @@ func (c *Core) UpdateArticle(context context.Context, article *models.Article) (
 		}
 		return article, nil
 	}, args...)
-
 	if err != nil {
-		return nil, xerrors.New(err)
+		switch {
+		case strings.Contains(err.Error(), `duplicate key value violates unique constraint`):
+			return nil, xerrors.New(ErrDuplicatedSlug)
+		default:
+			return nil, xerrors.New(err)
+		}
+
 	}
 	return returningArticle, nil
-
 }
 
 func (c *Core) GetArticleBySlug(context context.Context, slug string) (*models.Article, error) {

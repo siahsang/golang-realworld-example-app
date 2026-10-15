@@ -38,5 +38,6 @@ func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {
 
 	group.GET("/articles/feed", b.articleController.Feed)
 	group.POST("/articles", b.articleController.CreateArticle)
+	group.PUT("/articles/:slug", b.articleController.UpdateArticle)
 
 }
