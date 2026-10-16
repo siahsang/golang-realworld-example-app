@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -153,4 +154,72 @@ func (c *CommentController) GetComments(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"comments": comments})
+}
+
+func (c *CommentController) DeleteComment(ctx *gin.Context) {
+	slug := ctx.Param("slug")
+	commentID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusBadRequest,
+			ErrorMessage: "id must be a valid integer",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	if strings.TrimSpace(slug) == "" {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusBadRequest,
+			ErrorMessage: "slug must be provided",
+		})
+		return
+	}
+
+	user, err := auth.GetAuthenticatedUser(ctx)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusUnauthorized,
+			ErrorMessage: "authentication required",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	comment, err := c.core.GetCommentByIdAndSlug(ctx, commentID, slug)
+	if err != nil {
+		if errors.Is(err, databaseutils.ErrNoRowsFound) {
+			c.handler.HandleResponse(ctx, nil, &httperror.Error{
+				Code:         http.StatusNotFound,
+				ErrorMessage: "comment not found",
+			})
+			return
+		}
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	if err := c.auth.CheckUserCanDeleteComment(user, comment.AuthorID); err != nil {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusForbidden,
+			ErrorMessage: "not authorized to delete this comment",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	deletedRowsNum, err := c.core.DeleteCommentById(ctx, commentID)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+	if deletedRowsNum <= 0 {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusNotFound,
+			ErrorMessage: "comment not found",
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, gin.H{})
 }

@@ -108,8 +108,8 @@ func (auth *Auth) IsUserAuthenticated(ginCtx *gin.Context) bool {
 	return err == nil
 }
 
-func (auth *Auth) CheckUserCanDeleteComment(user *User, commentId int64) error {
-	if user != nil && (user.ID == commentId) {
+func (auth *Auth) CheckUserCanDeleteComment(user *User, authorID int64) error {
+	if user != nil && user.ID == authorID {
 		return nil
 	} else {
 		return xerrors.New(NotAuthorizeToDeleteComment)

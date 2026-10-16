@@ -16,21 +16,21 @@ var (
 	CannotFollowSelf      = xerrors.Message("Cannot follow yourself")
 )
 
-// GetProfileByUserName returns the profile for username, including whether
-// requestingUserID follows that user. If requestingUserID is nil, Following is false
-// and the follow-status query is skipped. User lookup and query errors are returned.
+// GetProfileByUserName returns the public profile for username. If
+// requestingUserID is non-nil, Following reports whether that user follows
+// username; it is false for anonymous requests.
+//
+// It returns NoRecordFound if no user has the given username.
 //
 // TODO: use one SQL query to fetch the user and following status.
 func (c *Core) GetProfileByUserName(ctx context.Context, username string, requestingUserID *int64) (*models.Profile, error) {
 
-	// Check whether the requesting user follows the target user.
 	const queryFollowing = `
 		SELECT EXISTS (
 			SELECT 1 FROM followers WHERE follower_id = $1 AND user_id = $2
 		)
 	`
 
-	// Build the public profile from the target user's information.
 	profile := &models.Profile{}
 	user, err := c.GetUserByUsername(ctx, username)
 	if err != nil {

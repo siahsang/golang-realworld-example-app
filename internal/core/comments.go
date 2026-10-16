@@ -57,6 +57,26 @@ func (c *Core) GetCommentsBySlug(context context.Context, slug string) ([]*model
 	return comments, nil
 }
 
+func (c *Core) GetCommentByIdAndSlug(ctx context.Context, commentID int64, slug string) (*models.Comment, error) {
+	query := `
+		SELECT c.id,c.body,c.created_at,c.updated_at,c.author_id,c.article_id
+		FROM comments c
+		JOIN articles a ON a.id = c.article_id
+		WHERE c.id = $1 AND a.slug = $2
+	`
+	comment, err := c.session.ExecuteSingleQuery(ctx, query, func(row *sql.Row) (*models.Comment, error) {
+		var comment models.Comment
+		if err := row.Scan(&comment.ID, &comment.Body, &comment.CreatedAt, &comment.UpdatedAt, &comment.AuthorID, &comment.ArticleID); err != nil {
+			return nil, xerrors.New(err)
+		}
+		return &comment, nil
+	}, commentID, slug)
+	if err != nil {
+		return nil, xerrors.New(err)
+	}
+	return comment, nil
+}
+
 func (c *Core) DeleteCommentById(ctx context.Context, commentId int64) (int64, error) {
 	deleteSQL := `
 		DELETE FROM comments

@@ -45,5 +45,6 @@ func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {
 	group.PUT("/articles/:slug", b.articleController.UpdateArticle)
 	group.DELETE("/articles/:slug", b.articleController.DeleteArticle)
 	group.POST("/articles/:slug/comments", b.commentController.CreateComment)
+	group.DELETE("/articles/:slug/comments/:id", b.commentController.DeleteComment)
 
 }
