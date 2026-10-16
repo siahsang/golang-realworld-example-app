@@ -1,24 +1,5 @@
 package main
 
-// CommentResponse struct
-//type CommentResponse struct {
-//	ID        int64              `json:"id"`
-//	CreatedAt time.Time          `json:"createdAt"`
-//	UpdatedAt time.Time          `json:"updatedAt"`
-//	Body      string             `json:"body"`
-//	Author    *CommentAuthorBody `json:"author,omitempty"`
-//}
-//
-//// CommentAuthorBody struct
-//type CommentAuthorBody struct {
-//	Username  string  `json:"username"`
-//	Bio       *string `json:"bio"`
-//	Image     *string `json:"image"`
-//	Following bool    `json:"following"`
-//}
-//
-//
-
 //func (app *application) deleteComment(w http.ResponseWriter, r *http.Request) {
 //	params := httprouter.ParamsFromContext(r.Context())
 //	slug := params.ByName("slug")

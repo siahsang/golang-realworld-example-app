@@ -116,9 +116,9 @@ func (c *CommentController) GetComments(ctx *gin.Context) {
 		return
 	}
 
-	var currentUserID *int64
+	var requestingUserID *int64
 	if user, err := auth.GetAuthenticatedUser(ctx); err == nil {
-		currentUserID = &user.ID
+		requestingUserID = &user.ID
 	}
 
 	comments := make([]gin.H, 0, len(commentsBySlug))
@@ -131,7 +131,7 @@ func (c *CommentController) GetComments(ctx *gin.Context) {
 				c.handler.HandleResponse(ctx, nil, err)
 				return
 			}
-			profile, err = c.core.GetProfileByUserName(ctx, author.Username, currentUserID)
+			profile, err = c.core.GetProfileByUserName(ctx, author.Username, requestingUserID)
 			if err != nil {
 				c.handler.HandleResponse(ctx, nil, err)
 				return

@@ -3,10 +3,11 @@ package core
 import (
 	"context"
 	"database/sql"
+	"strings"
+
 	"github.com/mdobak/go-xerrors"
 	"github.com/siahsang/blog/internal/auth"
 	"github.com/siahsang/blog/models"
-	"strings"
 )
 
 var (
@@ -15,16 +16,21 @@ var (
 	CannotFollowSelf      = xerrors.Message("Cannot follow yourself")
 )
 
-// todo: use one sql query to fetch user and following status
-func (c *Core) GetProfileByUserName(ctx context.Context, username string, currentUserID *int64) (*models.Profile, error) {
+// GetProfileByUserName returns the profile for username, including whether
+// requestingUserID follows that user. If requestingUserID is nil, Following is false
+// and the follow-status query is skipped. User lookup and query errors are returned.
+//
+// TODO: use one SQL query to fetch the user and following status.
+func (c *Core) GetProfileByUserName(ctx context.Context, username string, requestingUserID *int64) (*models.Profile, error) {
 
+	// Check whether the requesting user follows the target user.
 	const queryFollowing = `
 		SELECT EXISTS (
 			SELECT 1 FROM followers WHERE follower_id = $1 AND user_id = $2
 		)
 	`
 
-	// Fetch user info
+	// Build the public profile from the target user's information.
 	profile := &models.Profile{}
 	user, err := c.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -36,8 +42,8 @@ func (c *Core) GetProfileByUserName(ctx context.Context, username string, curren
 	profile.Bio = user.Bio
 	profile.Image = user.Image
 
-	// Check following status only if currentUserID is provided
-	if currentUserID == nil {
+	// Following is relative to the requesting user; anonymous requests report false.
+	if requestingUserID == nil {
 		profile.Following = false
 	} else {
 		isFollowing, err := c.session.ExecuteSingleQuery(ctx, queryFollowing, func(row *sql.Row) (bool, error) {
@@ -46,7 +52,7 @@ func (c *Core) GetProfileByUserName(ctx context.Context, username string, curren
 				return false, xerrors.New(err)
 			}
 			return isFollowing, nil
-		}, *currentUserID, profile.ID)
+		}, *requestingUserID, profile.ID)
 
 		if err != nil {
 			return nil, xerrors.New(err)

@@ -16,8 +16,6 @@ func (app *application) routes() http.Handler {
 	//router.Handler(http.MethodPost, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.followUser))
 	//router.Handler(http.MethodDelete, "/api/profiles/:followee/follow", app.requireAuthenticatedUser(app.unfollowUser))
 	//router.Handler(http.MethodPost, "/api/articles", app.requireAuthenticatedUser(app.createArticle))
-	//router.Handler(http.MethodPost, "/api/articles/:slug/comments", app.requireAuthenticatedUser(app.createComment))
-	//router.Handler(http.MethodDelete, "/api/articles/:slug/comments/:id", app.requireAuthenticatedUser(app.deleteComment))
 	//router.Handler(http.MethodPost, "/api/articles/:slug/favorite", app.requireAuthenticatedUser(app.favouriteArticle))
 	//router.Handler(http.MethodDelete, "/api/articles/:slug/favorite", app.requireAuthenticatedUser(app.unfavouriteArticle))
 
