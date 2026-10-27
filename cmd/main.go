@@ -104,14 +104,16 @@ func newApplication(db *sql.DB, logger *slog.Logger) (*application, error) {
 
 	authInstance := auth.New(cfg)
 	commentController := controller.NewCommentController(core, logger, cfg)
+	tagController := controller.NewTagController(core, logger)
 	profilerController := controller.NewProfileController(core, logger, authInstance)
 
 	authUserMiddleware := middleware.NewAuthUserMiddleware(core, cfg, logger)
 
 	app := &application{
-		uiConfig:           uiConfig,
-		uiRouter:           uiRouter,
-		blogAPIRouter:      router.NewBlogAPIRouter(userController, profilerController, articleController, commentController),
+		uiConfig: uiConfig,
+		uiRouter: uiRouter,
+		blogAPIRouter: router.NewBlogAPIRouter(userController, profilerController,
+			articleController, commentController, tagController),
 		auth:               authInstance,
 		core:               core,
 		logger:             logger,

@@ -10,18 +10,21 @@ type BlogAPIRouter struct {
 	profileController *controller.ProfileController
 	articleController *controller.ArticleController
 	commentController *controller.CommentController
+	tagController     *controller.TagController
 }
 
 func NewBlogAPIRouter(
 	userController *controller.UserController,
 	profileController *controller.ProfileController,
 	articleController *controller.ArticleController,
-	commentController *controller.CommentController) *BlogAPIRouter {
+	commentController *controller.CommentController,
+	tagController *controller.TagController) *BlogAPIRouter {
 	return &BlogAPIRouter{
 		userController:    userController,
 		profileController: profileController,
 		articleController: articleController,
 		commentController: commentController,
+		tagController:     tagController,
 	}
 }
 
@@ -34,6 +37,8 @@ func (b *BlogAPIRouter) RegisterOptionalAuthAPIRouter(group *gin.RouterGroup) {
 	group.GET("/articles", b.articleController.GetArticles)
 	group.GET("/articles/:slug", b.articleController.GetArticleBySlug)
 	group.GET("/articles/:slug/comments", b.commentController.GetComments)
+
+	group.GET("/tags", b.tagController.GetTags)
 }
 
 func (b *BlogAPIRouter) RegisterAuthRequiredAPIRouter(group *gin.RouterGroup) {

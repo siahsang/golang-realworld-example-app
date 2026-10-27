@@ -134,6 +134,7 @@ func (c *Core) GetTagsList(context context.Context) ([]*models.Tag, error) {
 	query := `
 		SELECT  id, name
 		FROM tags
+		ORDER BY name
 	`
 
 	foundTagList, err := c.session.ExecuteQuery(context, query, func(rows *sql.Rows) (*models.Tag, error) {
