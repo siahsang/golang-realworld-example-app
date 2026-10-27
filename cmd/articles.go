@@ -24,47 +24,7 @@ package main
 //
 
 //
-//func (app *application) favouriteArticle(w http.ResponseWriter, r *http.Request) {
-//	params := httprouter.ParamsFromContext(r.Context())
-//	slug := params.ByName("slug")
-//
-//	v := validator.New()
-//	v.CheckNotBlank(slug, "slug", "slug must be provided")
-//
-//	if !v.IsValid() {
-//		app.badRequestResponse(w, r, &AppError{ErrorDetails: v.Errors})
-//		return
-//	}
-//
-//	user, _ := app.auth.GetAuthenticatedUser(r)
-//	articleBySlug, err := app.core.GetArticleBySlug(r.Context(), slug)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	if articleBySlug == nil {
-//		app.notFoundResponse(w, r)
-//		return
-//	}
-//
-//	favouriteArticle, err := app.core.FavoriteArticle(r.Context(), slug, user)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	response, err := prepareSingleArticleResponse(r, favouriteArticle, app, user)
-//	if err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//
-//	if err := app.writeJSON(w, http.StatusOK, response, nil); err != nil {
-//		app.internalErrorResponse(w, r, err)
-//		return
-//	}
-//}
+
 //
 //func (app *application) unfavouriteArticle(w http.ResponseWriter, r *http.Request) {
 //	params := httprouter.ParamsFromContext(r.Context())
