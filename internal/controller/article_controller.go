@@ -414,6 +414,49 @@ func (c *ArticleController) FavoriteArticle(ctx *gin.Context) {
 	c.handler.HandleResponse(ctx, response, nil)
 }
 
+func (c *ArticleController) UnfavoriteArticle(ctx *gin.Context) {
+	slug := strings.TrimSpace(ctx.Param("slug"))
+	if slug == "" {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusBadRequest,
+			ErrorMessage: "slug must be provided",
+		})
+		return
+	}
+
+	user, err := auth.GetAuthenticatedUser(ctx)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, &httperror.Error{
+			Code:         http.StatusUnauthorized,
+			ErrorMessage: "authentication required",
+			ErrorStack:   err,
+		})
+		return
+	}
+
+	article, err := c.core.UnFavoriteArticle(ctx, slug, user)
+	if err != nil {
+		if errors.Is(err, databaseutils.ErrNoRowsFound) {
+			c.handler.HandleResponse(ctx, nil, &httperror.Error{
+				Code:         http.StatusNotFound,
+				ErrorMessage: "article not found",
+			})
+			return
+		}
+
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	response, err := prepareSingleArticleResponse(ctx, article, c.core, user)
+	if err != nil {
+		c.handler.HandleResponse(ctx, nil, err)
+		return
+	}
+
+	c.handler.HandleResponse(ctx, response, nil)
+}
+
 func prepareMultiArticleResponse(ctx *gin.Context, articles []*models.Article, totalCount int64, core *core.Core, currentLoginUser *auth.User) (gin.H, error) {
 	return prepareArticleResponse(ctx, articles, totalCount, core, currentLoginUser, false)
 }
